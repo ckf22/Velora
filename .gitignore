@@ -1,0 +1,4 @@
+*.o
+*.spv
+./build/
+./build/*
