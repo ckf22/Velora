@@ -3,7 +3,7 @@ TARGET_EXEC := app
 BUILD_DIR := ./build
 SRC_DIRS := ./src
 
-SRCS := $(shell find $(SRC_DIRS) -name '*.cpp' -or -name '*.hpp')
+SRCS := $(shell find $(SRC_DIRS) -name '*.cpp')
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 
@@ -31,6 +31,9 @@ clean:
 
 run:
 	./build/$(TARGET_EXEC)
+
+touch:
+	touch $(SRCS)
 
 
 -include $(DEPS)
