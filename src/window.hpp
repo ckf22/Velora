@@ -6,7 +6,6 @@
 
 #include <string>
 
-
 namespace velora{
 
 class Window{

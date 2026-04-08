@@ -1,3 +1,5 @@
+#define DEBUG
+
 #include "application.hpp"
 
 #include <stdexcept>
