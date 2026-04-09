@@ -1,7 +1,9 @@
 #pragma once
 
 #include "window.hpp"
-#include "instance.hpp"
+#include "device.hpp"
+
+#include <memory>
 
 namespace velora{
     
@@ -15,6 +17,6 @@ class Application{
     static constexpr int WIDTH = 800, HEIGHT = 600;
 
     Window window{WIDTH, HEIGHT, "Vulkan Window"};
-    Instance instance{};
+    Device device{window.get_window()};
 };
 };

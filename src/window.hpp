@@ -17,6 +17,7 @@ class Window{
     Window& operator=(const Window& w) = delete;
 
     bool should_close();
+    GLFWwindow& get_window() { return *window; }
   private:
     void create_window();
 
