@@ -18,10 +18,23 @@ Device::~Device(){
     vkDestroyDevice(this->logical_device, nullptr);
 }
 
+u_int32_t Device::find_memory_type(u_int32_t filter, VkMemoryPropertyFlags flags){
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(this->physical_device, &memProperties);
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((filter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & flags) == flags)
+            return i;
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
+}
+
 void Device::create_window_surface(GLFWwindow& window){
     if( glfwCreateWindowSurface(this->instance.get_instance(), &window, nullptr, &this->surface) != VK_SUCCESS ){
         throw std::runtime_error("failed to create window surface");
     }
+
+    //vkGetPhysicalDeviceSurfaceCapabilities2KHR(this->physical_device, &this->surface_info, &this->surface_capabilities);
 
     if constexpr (debug)
         std::cout << "Window surface created" << std::endl;
@@ -84,7 +97,9 @@ void Device::create_logical_device(){
     for(int i = 0; i < queues.size(); ++i){
         if( queues[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ){
             queue_index = static_cast<uint32_t>(i);
-            std::cout << "Queue found" << std::endl;
+            if constexpr (debug){
+                std::cout << "Queue found" << std::endl;
+            }
             break;
         }
     }
@@ -133,6 +148,8 @@ void Device::create_logical_device(){
 
     if( vkCreateDevice(this->physical_device, &device_ci, nullptr, &this->logical_device) != VK_SUCCESS) 
         throw std::runtime_error("Failed to create logical device");
+    if constexpr (debug)
+        std::cout << "Logical Device created" << std::endl;
 }
 
 bool Device::is_device_suitable(VkPhysicalDevice _device){

@@ -18,7 +18,11 @@ class Device{
     Device(Device&) = delete;
     void operator=(const Device&) = delete;
 
+    u_int32_t find_memory_type(u_int32_t filter, VkMemoryPropertyFlags flags);
+
     VkDevice& get_device() { return logical_device; }
+    VkPhysicalDevice& get_physical_device() { return physical_device; }
+    VkSurfaceKHR& get_surface() { return surface; }
   private:
     #ifndef DEBUG
     static constexpr bool debug = false;
@@ -37,7 +41,9 @@ class Device{
     VkPhysicalDevice physical_device;
     VkDevice logical_device;
     VkSurfaceKHR surface;
-    VkSurfaceCapabilities2KHR surface_capabilities{};
+
+    VkSurfaceCapabilities2KHR surface_capabilities;
+    VkPhysicalDeviceSurfaceInfo2KHR surface_info;
 
     std::optional<std::vector<const char*>> required_extensions;
     Instance instance;
