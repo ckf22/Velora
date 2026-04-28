@@ -23,11 +23,12 @@ class Device{
     VkDevice& get_device() { return logical_device; }
     VkPhysicalDevice& get_physical_device() { return physical_device; }
     VkSurfaceKHR& get_surface() { return surface; }
+    u_int32_t get_queue_family() { return queue_family_index; }
+    VkQueue& get_queue() { return queue; }
   private:
     #ifndef DEBUG
     static constexpr bool debug = false;
-    #endif
-    #ifdef DEBUG
+    #else
     static constexpr bool debug = true;
     #endif
 
@@ -41,7 +42,9 @@ class Device{
     VkPhysicalDevice physical_device;
     VkDevice logical_device;
     VkSurfaceKHR surface;
+    VkQueue queue;
 
+    u_int32_t queue_family_index;
     VkSurfaceCapabilities2KHR surface_capabilities;
     VkPhysicalDeviceSurfaceInfo2KHR surface_info;
 

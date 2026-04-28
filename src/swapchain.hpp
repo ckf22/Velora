@@ -11,7 +11,7 @@ class SwapChain{
     #else
     static constexpr bool debug = false;
     #endif
-    const std::vector<VkPresentModeKHR> preffered_present_modes{VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR};
+    const std::vector<VkPresentModeKHR> preffered_present_modes{VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_LATEST_READY_EXT, VK_PRESENT_MODE_MAILBOX_KHR};
     const std::vector<VkFormat> preferred_depth_formats{VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
   public:
     SwapChain(VkSurfaceKHR& _surface, Device& _device, unsigned int _width, unsigned int _height);
@@ -20,8 +20,22 @@ class SwapChain{
     void operator=(const SwapChain&) = delete;
     SwapChain(SwapChain&) = delete;
 
+    VkSwapchainKHR& get_swapchain() { return swapchain; }
     VkFormat& get_image_format() { return image_format; }
     VkFormat& get_depth_format() { return depth_format; }
+    VkImage& get_image(int i) { return images[i]; }
+    VkImage& get_depth_image(int i) { return depth_images[i]; }
+    VkImageView& get_image_view(int i) { return image_views[i]; }
+    VkImageView& get_depth_image_view(int i) { return depth_image_views[i]; }
+    VkSemaphore& get_present_semaphore(int i) { return present_semaphores[i]; }
+    VkSemaphore& get_render_semaphore(int i) { return render_semaphores[i]; }    
+    VkExtent2D get_current_extent() { return extent; }
+    VkFence& get_fence(int i) { return fences[i]; }
+    size_t get_current_index() { return current_index; }
+    int get_image_count() { return images.size(); }
+
+    void wait_for_active_image_fence();
+    void aquire_next_image();
 
     void recreate_swapchain(unsigned int _width, unsigned int _height);
   private:
@@ -42,9 +56,15 @@ class SwapChain{
 
     VkSwapchainKHR swapchain;
     std::vector<VkImage> images;
-    std::vector<VkDeviceMemory> image_ram;
     std::vector<VkImageView> image_views;
-    size_t current_index = 0;
+    std::vector<VkImage> depth_images;
+    std::vector<VkImageView> depth_image_views;
+    std::vector<VkDeviceMemory> depth_image_ram;
+
+    std::vector<VkSemaphore> render_semaphores;
+    std::vector<VkSemaphore> present_semaphores;
+    std::vector<VkFence> fences;
+    size_t current_index = 1;
 };
 
 }

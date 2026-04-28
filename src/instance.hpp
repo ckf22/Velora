@@ -29,8 +29,7 @@ class Instance{
     #ifdef DEBUG
     static constexpr bool debug = true;
     const std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
-    #endif
-    #ifndef DEBUG
+    #else
     static constexpr bool debug = false;
     #endif
 

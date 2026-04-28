@@ -98,7 +98,7 @@ void Device::create_logical_device(){
         if( queues[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ){
             queue_index = static_cast<uint32_t>(i);
             if constexpr (debug){
-                std::cout << "Queue found" << std::endl;
+                std::cout << "Queue found: Index " << *queue_index << std::endl;
             }
             break;
         }
@@ -106,6 +106,7 @@ void Device::create_logical_device(){
 
     if( !queue_index.has_value() )
         throw std::runtime_error("Failed to find suitable QueueFamilies");
+    this->queue_family_index = *queue_index;
 
     const float qfpriorities{ 1.0f };
 
@@ -146,10 +147,12 @@ void Device::create_logical_device(){
         .pEnabledFeatures = &enabledVk10Features
     };
 
-    if( vkCreateDevice(this->physical_device, &device_ci, nullptr, &this->logical_device) != VK_SUCCESS) 
+    if( vkCreateDevice(this->physical_device, &device_ci, VK_NULL_HANDLE, &this->logical_device) != VK_SUCCESS) 
         throw std::runtime_error("Failed to create logical device");
     if constexpr (debug)
         std::cout << "Logical Device created" << std::endl;
+
+    vkGetDeviceQueue(this->logical_device, queue_family_index, *queue_index, &this->queue);
 }
 
 bool Device::is_device_suitable(VkPhysicalDevice _device){

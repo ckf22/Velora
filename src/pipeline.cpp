@@ -18,6 +18,10 @@ Pipeline::~Pipeline(){
     vkDestroyPipeline(this->device.get_device(), this->pipeline, nullptr);
 }
 
+void Pipeline::bind_cmd_buffer(VkCommandBuffer& cmd_buffer){
+    vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
+}
+
 void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format){
     this->create_shader_module(&this->vertex_shader, vertex_filepath);
     this->create_shader_module(&this->fragment_shader, fragment_filepath);
@@ -76,6 +80,9 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
 
     if( vkCreateGraphicsPipelines(this->device.get_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &this->pipeline) != VK_SUCCESS )
         throw std::runtime_error("Failed to create graphics pipeline");
+
+    if constexpr (debug)
+        std::cout << "Graphics Pipeline Created" << std::endl;
 }
 
 void Pipeline::create_pipeline_layout(){

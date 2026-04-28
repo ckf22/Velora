@@ -25,6 +25,8 @@ class Pipeline{
 
     void operator=(const Pipeline&) = delete;
     Pipeline(Pipeline&) = delete;
+
+    void bind_cmd_buffer(VkCommandBuffer& cmd_buffer);
   private:
     void create_pipeline(std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
     void create_pipeline_layout();
@@ -35,8 +37,7 @@ class Pipeline{
 
     #ifdef DEBUG
     static constexpr bool debug = true;
-    #endif
-    #ifndef DEBUG
+    #else
     static constexpr bool debug = false;
     #endif
 
