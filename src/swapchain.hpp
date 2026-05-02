@@ -27,15 +27,13 @@ class SwapChain{
     VkImage& get_depth_image(int i) { return depth_images[i]; }
     VkImageView& get_image_view(int i) { return image_views[i]; }
     VkImageView& get_depth_image_view(int i) { return depth_image_views[i]; }
-    VkSemaphore& get_present_semaphore(int i) { return present_semaphores[i]; }
-    VkSemaphore& get_render_semaphore(int i) { return render_semaphores[i]; }    
     VkExtent2D get_current_extent() { return extent; }
     VkFence& get_fence(int i) { return fences[i]; }
     size_t get_current_index() { return current_index; }
     int get_image_count() { return images.size(); }
 
     void wait_for_active_image_fence();
-    void aquire_next_image();
+    void aquire_next_image(VkSemaphore& image_ready_semaphore);
 
     void recreate_swapchain(unsigned int _width, unsigned int _height);
   private:
@@ -55,16 +53,16 @@ class SwapChain{
     VkSwapchainCreateInfoKHR swapchain_ci;
 
     VkSwapchainKHR swapchain;
+
     std::vector<VkImage> images;
     std::vector<VkImageView> image_views;
+
     std::vector<VkImage> depth_images;
     std::vector<VkImageView> depth_image_views;
     std::vector<VkDeviceMemory> depth_image_ram;
 
-    std::vector<VkSemaphore> render_semaphores;
-    std::vector<VkSemaphore> present_semaphores;
     std::vector<VkFence> fences;
-    size_t current_index = 1;
+    size_t current_index = 0;
 };
 
 }

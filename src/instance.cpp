@@ -32,18 +32,24 @@ void Instance::create_instance(VkApplicationInfo& app_info){
         .ppEnabledExtensionNames = this->required_extensions.data()
     };
 
-    if constexpr (debug) {
+    #ifdef DEBUG
+    if(this->check_validation_layer_support()){
         instance_ci.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
         instance_ci.ppEnabledLayerNames = validation_layers.data();
-
-        std::cout << "Validation Layers enabled" << std::endl;
-    } else {
+    }
+    else{ 
         instance_ci.enabledLayerCount = 0;
     }
+    #else
+    instance_ci.enabledLayerCount = 0;
+    #endif
 
     this->check_glfw_extension_support(this->required_extensions);
     if( vkCreateInstance(&instance_ci, nullptr, &this->instance) != VK_SUCCESS)
         throw std::runtime_error("Failed to create Instance");
+
+    if constexpr (debug)
+        std::cout << "Validation Layers enabled" << std::endl;
 
 }
 
@@ -84,6 +90,7 @@ void Instance::check_glfw_extension_support(std::vector<const char*> required){
     }
 }
 
+#ifdef DEBUG
 bool Instance::check_validation_layer_support(){
     uint32_t count;
     vkEnumerateInstanceLayerProperties(&count, nullptr);
@@ -106,5 +113,6 @@ bool Instance::check_validation_layer_support(){
 
     return true;
 }
+#endif
 
 };

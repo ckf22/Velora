@@ -10,6 +10,7 @@
 namespace velora {
 Application::Application(){
     this->create_command_buffers(this->device.get_queue_family());
+    this->create_semaphores();
 
     if constexpr (debug)
         std::cout << "\n---------------\nSetup completed\n---------------\n" << std::endl;
@@ -17,25 +18,47 @@ Application::Application(){
 
 Application::~Application(){
     vkDestroyCommandPool(this->device.get_device(), this->command_pool, VK_NULL_HANDLE);
+
+    for(auto& it : this->image_ready_semaphores)
+        vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
+
+    for(auto& it : this->image_aquired_semaphores)
+        vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
 }
 
 void Application::run(float frame_time_ms){
 
     auto t0 = std::chrono::high_resolution_clock::now();
+
+    // IMPORTTANT: Only use for the image_aquired_semaphores because the call the aquire_next_image changes the index
+    int local_semaphore_index = 0;
+    u_int32_t frame_count = 0;
     while(!this->window.should_close()){
 
+        //std::cout << "Frame " << frame_count << "; start: Local Semaphore index " << local_semaphore_index << std::endl;
         this->swapchain.wait_for_active_image_fence();
-        this->swapchain.aquire_next_image();
+        //std::cout << "Frame " << frame_count << "; waited for fences" << std::endl;
+        this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
+        //std::cout << "Frame " << frame_count << "; next image_aquired" << std::endl;
         this->record_command_buffers();
-        this->submit_command_buffers(this->command_buffers[this->swapchain.get_current_index()]);
+        //std::cout << "Frame " << frame_count << "; command buffers recorded" << std::endl;
+        this->submit_command_buffers(this->command_buffers[this->swapchain.get_current_index()],
+             this->image_aquired_semaphores[local_semaphore_index], this->swapchain.get_fence(this->swapchain.get_current_index()));
+        //std::cout << "Frame " << frame_count << "; command buffers submitted" << std::endl;
         this->present_image();
+        std::cout << "Frame " << frame_count << "; presented & FINISHED\n" << std::endl;
+        
 
         glfwPollEvents();
+
         std::chrono::microseconds buffer = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0);
         // resetting time here to include 'should_close()' function call
         t0 = std::chrono::high_resolution_clock::now();
         //std::cout << buffer.count() << std::endl;
-        //usleep( (frame_time_ms*1000) - buffer.count() );
+        local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
+        frame_count++;
+        if(frame_count >= 14)
+            break;
     }
     vkDeviceWaitIdle(this->device.get_device());
 }
@@ -68,19 +91,36 @@ void Application::create_command_buffers(u_int32_t queue_family_index){
         std::cout << "Command Buffers created" << std::endl;
 }
 
+void Application::create_semaphores(){
+    VkSemaphoreCreateInfo ci{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+    };
+
+    this->image_ready_semaphores.resize(this->swapchain.get_image_count());
+    this->image_aquired_semaphores.resize(this->swapchain.get_image_count());
+
+    for(int i = 0; i < this->swapchain.get_image_count(); ++i)
+        if( vkCreateSemaphore(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->image_ready_semaphores[i]) != VK_SUCCESS 
+         || vkCreateSemaphore(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->image_aquired_semaphores[i]) != VK_SUCCESS )
+            throw std::runtime_error(std::string("Failed to create Semaphores at index ")+std::to_string(i));
+
+    if constexpr (debug)
+        std::cout << "Semaphores created" << std::endl;
+}
+
 void Application::present_image(){
     auto index = this->swapchain.get_current_index();
     u_int32_t buffer = index;
     VkPresentInfoKHR present_info{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &this->swapchain.get_render_semaphore(index),
+        .pWaitSemaphores = &this->image_ready_semaphores[index],
         .swapchainCount = 1,    
         .pSwapchains = &this->swapchain.get_swapchain(),
         .pImageIndices = &buffer
     };
-
-    if( vkQueuePresentKHR(this->device.get_queue(), &present_info) != VK_SUCCESS)
+    
+    if( vkQueuePresentKHR(this->device.get_queue(), &present_info) != VK_SUCCESS )
         throw std::runtime_error("Failed to present image");
 
 }
@@ -140,7 +180,7 @@ void Application::record_command_buffers(){
         .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue{ .color = { 0.0f, 0.0f, 0.0f, 1.0f } }
+        .clearValue{ .color = { 1.0f, 1.0f, 1.0f, 1.0f } }
     };
     VkRenderingAttachmentInfo depth_attachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -177,7 +217,7 @@ void Application::record_command_buffers(){
     this->pipeline.bind_cmd_buffer(cmd_buffer);
 
     // the actual magic
-    vkCmdDraw(cmd_buffer, 3, 1, 0, 0);
+    vkCmdDraw(cmd_buffer, 6, 1, 0, 0);
 
     vkCmdEndRendering(cmd_buffer);
 
@@ -204,22 +244,21 @@ void Application::record_command_buffers(){
 
 }
 
-void Application::submit_command_buffers(VkCommandBuffer& cmd_buffer){
+void Application::submit_command_buffers(VkCommandBuffer& cmd_buffer, VkSemaphore& image_aquired_semaphore, VkFence& fence){
     auto index = this->swapchain.get_current_index();
     VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit_info{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount = 0, // will be used when vertex data is uploaded
-        .pWaitSemaphores = &this->swapchain.get_present_semaphore(index),
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &image_aquired_semaphore,
         .pWaitDstStageMask = &wait_stages,
         .commandBufferCount = 1,
         .pCommandBuffers = &cmd_buffer,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &this->swapchain.get_render_semaphore(index),
+        .pSignalSemaphores = &this->image_ready_semaphores[index],
     };
-
-    vkResetFences(this->device.get_device(), 1, &this->swapchain.get_fence(index));
-    vkQueueSubmit(this->device.get_queue(), 1, &submit_info, this->swapchain.get_fence(index));
+    std::cout << "Submitting Queue; fence index " << index << "; Fence: " << static_cast<VkFence>(this->swapchain.get_fence(index)) << std::endl;
+    vkQueueSubmit(this->device.get_queue(), 1, &submit_info, fence);
 }
 
 } // namespace velora

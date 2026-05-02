@@ -6,7 +6,6 @@
 
 namespace velora{
 
-
 SwapChain::SwapChain(VkSurfaceKHR& _surface, Device& device, unsigned int _width = 800, unsigned int _height = 600)
  : surface{_surface}, device{device.get_device()} {
     this->extent = VkExtent2D{.width = _width, .height = _height};
@@ -18,12 +17,6 @@ SwapChain::~SwapChain(){
 
     for(auto& it : this->fences)
         vkDestroyFence(this->device, it, nullptr);
-
-    for(auto& it : this->render_semaphores)
-        vkDestroySemaphore(this->device, it, nullptr);
-
-    for(auto& it : this->present_semaphores)
-        vkDestroySemaphore(this->device, it, nullptr);
 
     for(auto& it : this->image_views)
         vkDestroyImageView(this->device, it, nullptr);
@@ -38,10 +31,12 @@ SwapChain::~SwapChain(){
         vkFreeMemory(this->device, it, nullptr);
 }
 
-void SwapChain::aquire_next_image(){
+void SwapChain::aquire_next_image(VkSemaphore& image_ready_semaphore){
     u_int32_t i{};
-    if( vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->present_semaphores[this->current_index], this->fences[this->current_index], &i) != VK_SUCCESS)
+    auto result = vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, image_ready_semaphore, this->fences[this->current_index], &i);
+    if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         throw std::runtime_error("Failed to Aquire Next Image");
+
     this->current_index = static_cast<size_t>(i);
 }
 
@@ -50,6 +45,7 @@ void SwapChain::wait_for_active_image_fence(){
         throw std::runtime_error(std::string("Failed to wait on Fence; index ")+std::to_string(this->current_index));
     if( vkResetFences(this->device, 1, &this->fences[this->current_index]) != VK_SUCCESS )
         throw std::runtime_error(std::string("Failed to reset Fence; index ")+std::to_string(this->current_index));
+    std::cout << "Fence " << static_cast<VkFence>(this->fences[this->current_index]) << ": waited on and reset" << std::endl;
 }
 
 void SwapChain::recreate_swapchain(unsigned int _width, unsigned int _height){
@@ -154,26 +150,18 @@ void SwapChain::initialise_swapchain(Device& device) {
         .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
     this->fences.resize(count);
-    for(int i = 0; i < count; ++i)
+    for(int i = 0; i < count; ++i){
         if(vkCreateFence(device.get_device(), &fence_ci, VK_NULL_HANDLE, &this->fences[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Fence at index ")+std::to_string(i));
+        fence_ci.flags = 0;
+    }
 
     if constexpr (debug)
         std::cout << "Fences created" << std::endl;
 
 
-    VkSemaphoreCreateInfo semaphore_ci{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-    };
-    this->present_semaphores.resize(count);
-    this->render_semaphores.resize(count);
-    for(int i = 0; i < count; ++i)
-        if(vkCreateSemaphore(this->device, &semaphore_ci, VK_NULL_HANDLE, &this->render_semaphores[i]) != VK_SUCCESS
-        || vkCreateSemaphore(this->device, &semaphore_ci, VK_NULL_HANDLE, &this->present_semaphores[i]) != VK_SUCCESS)
-            throw std::runtime_error(std::string("Failed to create Semaphores at index ")+std::to_string(i));
-
     if constexpr (debug)
-        std::cout << "Semaphores Created\nSwapchain created" << std::endl;
+        std::cout << "Swapchain created" << std::endl;
 }
 
 VkFormat SwapChain::choose_format(VkSurfaceKHR& _surface, Device& device, VkSurfaceCapabilitiesKHR capabilities){
@@ -241,6 +229,9 @@ VkPresentModeKHR SwapChain::choose_present_mode(VkSurfaceKHR& _surface, Device& 
 
     if( !present_mode.has_value() )
         throw std::runtime_error("No selected Present Mode is supported");
+
+    if constexpr (debug)
+        std::cout << "Present Mode: " << *present_mode << std::endl;
 
     return *present_mode;
 }
