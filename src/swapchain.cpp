@@ -33,7 +33,7 @@ SwapChain::~SwapChain(){
 
 void SwapChain::aquire_next_image(VkSemaphore& image_ready_semaphore){
     u_int32_t i{};
-    auto result = vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, image_ready_semaphore, this->fences[this->current_index], &i);
+    auto result = vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, image_ready_semaphore, VK_NULL_HANDLE, &i);
     if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         throw std::runtime_error("Failed to Aquire Next Image");
 
@@ -45,7 +45,6 @@ void SwapChain::wait_for_active_image_fence(){
         throw std::runtime_error(std::string("Failed to wait on Fence; index ")+std::to_string(this->current_index));
     if( vkResetFences(this->device, 1, &this->fences[this->current_index]) != VK_SUCCESS )
         throw std::runtime_error(std::string("Failed to reset Fence; index ")+std::to_string(this->current_index));
-    std::cout << "Fence " << static_cast<VkFence>(this->fences[this->current_index]) << ": waited on and reset" << std::endl;
 }
 
 void SwapChain::recreate_swapchain(unsigned int _width, unsigned int _height){
@@ -153,7 +152,7 @@ void SwapChain::initialise_swapchain(Device& device) {
     for(int i = 0; i < count; ++i){
         if(vkCreateFence(device.get_device(), &fence_ci, VK_NULL_HANDLE, &this->fences[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Fence at index ")+std::to_string(i));
-        fence_ci.flags = 0;
+        fence_ci.flags = 0; // only the first fence needs to be signalled due to the render loop
     }
 
     if constexpr (debug)

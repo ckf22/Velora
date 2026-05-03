@@ -19,13 +19,13 @@ class Application{
     Application();
     ~Application();
 
-    void run(float frame_time_ms = 16.67);
+    void run(float fps = 60);
   private:
     void create_command_buffers(u_int32_t queue_family_index);
     void create_semaphores();
 
     void record_command_buffers();
-    void submit_command_buffers(VkCommandBuffer& cmd_buffer, VkSemaphore& image_aquired_semaphore, VkFence& fence);
+    void submit_command_buffers(VkSemaphore& image_aquired_semaphore);
 
     void present_image();
 

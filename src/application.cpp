@@ -26,39 +26,39 @@ Application::~Application(){
         vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
 }
 
-void Application::run(float frame_time_ms){
+void Application::run(float fps){
+    float frame_time_micro_seconds = 1000000.f / fps;
 
     auto t0 = std::chrono::high_resolution_clock::now();
 
-    // IMPORTTANT: Only use for the image_aquired_semaphores because the call the aquire_next_image changes the index
+    // IMPORTTANT: Only use for the image_aquired_semaphores because the call to aquire_next_image changes the index inbeetween signalling and waiting
     int local_semaphore_index = 0;
+
     u_int32_t frame_count = 0;
     while(!this->window.should_close()){
 
-        //std::cout << "Frame " << frame_count << "; start: Local Semaphore index " << local_semaphore_index << std::endl;
         this->swapchain.wait_for_active_image_fence();
-        //std::cout << "Frame " << frame_count << "; waited for fences" << std::endl;
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
-        //std::cout << "Frame " << frame_count << "; next image_aquired" << std::endl;
         this->record_command_buffers();
-        //std::cout << "Frame " << frame_count << "; command buffers recorded" << std::endl;
-        this->submit_command_buffers(this->command_buffers[this->swapchain.get_current_index()],
-             this->image_aquired_semaphores[local_semaphore_index], this->swapchain.get_fence(this->swapchain.get_current_index()));
-        //std::cout << "Frame " << frame_count << "; command buffers submitted" << std::endl;
+        this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
-        std::cout << "Frame " << frame_count << "; presented & FINISHED\n" << std::endl;
         
+        local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
+        frame_count++;
 
         glfwPollEvents();
 
-        std::chrono::microseconds buffer = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0);
-        // resetting time here to include 'should_close()' function call
+        // filling wait time
+        while( std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0).count() < frame_time_micro_seconds ){
+            glfwPollEvents();
+            // usleep takes microseconds
+            usleep(frame_time_micro_seconds / 10);
+        }
+
+        if constexpr (debug)
+            std::cout << "Frame " << frame_count << std::endl;
+
         t0 = std::chrono::high_resolution_clock::now();
-        //std::cout << buffer.count() << std::endl;
-        local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
-        frame_count++;
-        if(frame_count >= 14)
-            break;
     }
     vkDeviceWaitIdle(this->device.get_device());
 }
@@ -244,7 +244,7 @@ void Application::record_command_buffers(){
 
 }
 
-void Application::submit_command_buffers(VkCommandBuffer& cmd_buffer, VkSemaphore& image_aquired_semaphore, VkFence& fence){
+void Application::submit_command_buffers(VkSemaphore& image_aquired_semaphore){
     auto index = this->swapchain.get_current_index();
     VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit_info{
@@ -253,12 +253,11 @@ void Application::submit_command_buffers(VkCommandBuffer& cmd_buffer, VkSemaphor
         .pWaitSemaphores = &image_aquired_semaphore,
         .pWaitDstStageMask = &wait_stages,
         .commandBufferCount = 1,
-        .pCommandBuffers = &cmd_buffer,
+        .pCommandBuffers = &this->command_buffers[index],
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &this->image_ready_semaphores[index],
     };
-    std::cout << "Submitting Queue; fence index " << index << "; Fence: " << static_cast<VkFence>(this->swapchain.get_fence(index)) << std::endl;
-    vkQueueSubmit(this->device.get_queue(), 1, &submit_info, fence);
+    vkQueueSubmit(this->device.get_queue(), 1, &submit_info, this->swapchain.get_fence(index));
 }
 
 } // namespace velora
