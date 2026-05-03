@@ -18,12 +18,14 @@ struct Vertex{
 
 class Object{
   public:
-    
+    Object();
   private:
     std::vector<Vertex> data;
+    std::vector<size_t> indices;
 
     glm::vec3 position;
-    float rx, ry, rz;
+    float rx = 0, ry = 0, rz = 0; // radians
+    glm::mat4x4 world_space_transformation{1};
 };
 
 }
