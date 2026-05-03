@@ -18,12 +18,6 @@ bool Window::should_close(){
     return glfwWindowShouldClose(this->window);
 }
 
-void Window::create_window_surface(VkInstance instance, VkSurfaceKHR * surface){
-    if(glfwCreateWindowSurface(instance, this->window, nullptr, surface) != VK_SUCCESS){
-        throw std::runtime_error("failed to create window surface");
-    }
-}
-
 void Window::create_window(){
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
