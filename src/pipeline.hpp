@@ -1,45 +1,53 @@
 #pragma once
 
 #include "device.hpp"
-#include <string>
 #include <vector>
+#include <string>
 
-namespace velora {
-struct PipelineConfigInfo {
-  VkViewport viewport;
-  VkRect2D scissor;
-  VkPipelineInputAssemblyStateCreateInfo input_assembly_info;
-  VkPipelineRasterizationStateCreateInfo rasterizationInfo;
-  VkPipelineMultisampleStateCreateInfo multisampleInfo;
-  VkPipelineColorBlendAttachmentState colorBlendAttachment;
-  VkPipelineColorBlendStateCreateInfo colorBlendInfo;
-  VkPipelineDepthStencilStateCreateInfo depthStencilInfo;
-  VkPipelineLayout pipelineLayout = nullptr;
-  VkRenderPass renderPass = nullptr;
-  uint32_t subpass = 0;
-};
+namespace velora{
 
 class Pipeline{
+    struct PipelineConfigInfo{
+      VkViewport viewport;
+      VkRect2D scissor;
+      VkPipelineInputAssemblyStateCreateInfo input_assembly;
+      VkPipelineRasterizationStateCreateInfo rasterization;
+      VkPipelineMultisampleStateCreateInfo multisample;
+      VkPipelineColorBlendAttachmentState color_blend_attachment;
+      VkPipelineColorBlendStateCreateInfo color_blend;
+      VkPipelineDepthStencilStateCreateInfo depth_stencil;
+      VkPipelineRenderingCreateInfo rendering_ci;
+    };
+
   public:
-    Pipeline(Device& _device, const PipelineConfigInfo pipeline_info, std::string vertex_filepath, std::string fragment_filepath);
+    Pipeline(Device& _device, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
     ~Pipeline();
 
-    Pipeline& operator=(const Pipeline&) = delete;
-    void operator=(Pipeline) = delete;
+    void operator=(const Pipeline&) = delete;
+    Pipeline(Pipeline&) = delete;
 
-    void bind(VkCommandBuffer command_buffer);
-
-    static PipelineConfigInfo default_pipeline_config(uint32_t width, uint32_t height);
+    void bind_cmd_buffer(VkCommandBuffer& cmd_buffer);
   private:
-    static std::vector<char> read_file(std::string filepath);
+    void create_pipeline(std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
+    void create_pipeline_layout();
+    void create_shader_module(VkShaderModule * target_module ,std::string filepath);
+
+    static std::vector<char> read_file(std::string filename);
+    static PipelineConfigInfo get_default_config_info(VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
+
+    #ifdef DEBUG
+    static constexpr bool debug = true;
+    #else
+    static constexpr bool debug = false;
+    #endif
 
     Device& device;
-    VkPipeline vk_pipeline;
+
     VkShaderModule vertex_shader;
     VkShaderModule fragment_shader;
 
-    void create_pipeline(PipelineConfigInfo config_info, std::string vertex_filepath, std::string fragment_filepath);
-    void create_shader_module(const std::vector<char>& shader_code, VkShaderModule * module);
+    VkPipelineLayout pipeline_layout{};
+    VkPipeline pipeline;
 };
 
 }

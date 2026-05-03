@@ -1,127 +1,263 @@
 #include "application.hpp"
 #include "window.hpp"
+
 #include <GLFW/glfw3.h>
 
-#include <stdexcept>
-#include <array>
 #include <iostream>
 #include <chrono>
+#include <unistd.h>
 
 namespace velora {
 Application::Application(){
-    this->create_pipeline_layout();
-    this->create_pipeline();
-    this->create_command_buffers();
+    this->create_command_buffers(this->device.get_queue_family());
+    this->create_semaphores();
+
+    if constexpr (debug)
+        std::cout << "\n---------------\nSetup completed\n---------------\n" << std::endl;
 }
 
 Application::~Application(){
-    vkDestroyPipelineLayout(this->device.device(), this->pipeline_layout, nullptr);
+    vkDestroyCommandPool(this->device.get_device(), this->command_pool, VK_NULL_HANDLE);
+
+    for(auto& it : this->image_ready_semaphores)
+        vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
+
+    for(auto& it : this->image_aquired_semaphores)
+        vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
 }
 
-void Application::run(){
-    typedef std::chrono::high_resolution_clock Clock;
-    auto t0 = Clock::now();
-    
+void Application::run(float fps){
+    float frame_time_micro_seconds = 1000000.f / fps;
+
+    auto t0 = std::chrono::high_resolution_clock::now();
+
+    // IMPORTTANT: Only use for the image_aquired_semaphores because the call to aquire_next_image changes the index inbeetween signalling and waiting
+    int local_semaphore_index = 0;
+
+    u_int32_t frame_count = 0;
     while(!this->window.should_close()){
-        t0 = Clock::now();
+
+        this->swapchain.wait_for_active_image_fence();
+        this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
+        this->record_command_buffers();
+        this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
+        this->present_image();
+        
+        local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
+        frame_count++;
 
         glfwPollEvents();
-        this->draw_frame();
 
-        std::chrono::duration<float> time = Clock::now() - t0;
-        auto buffer = std::chrono::duration_cast< std::chrono::microseconds >(time).count();
-        std::cout << buffer << "microseconds" << std::endl;
-    }
-
-    vkDeviceWaitIdle(this->device.device());
-}
-
-void Application::create_pipeline_layout(){
-    VkPipelineLayoutCreateInfo pipeline_layout_info{};
-    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = 0;
-    pipeline_layout_info.pSetLayouts = nullptr;
-    pipeline_layout_info.pushConstantRangeCount = 0;
-    pipeline_layout_info.pPushConstantRanges = nullptr;
-
-    if(  vkCreatePipelineLayout(this->device.device(), &pipeline_layout_info, nullptr, &this->pipeline_layout )  !=  VK_SUCCESS  ){
-        throw std::runtime_error("failed to create pipeline layout");
-    }   
-}
-
-void Application::create_pipeline(){
-    auto pipeline_config = Pipeline::default_pipeline_config(this->swapchain.width(), this->swapchain.height());
-    pipeline_config.renderPass = this->swapchain.getRenderPass();
-    pipeline_config.pipelineLayout = this->pipeline_layout;
-    this->pipeline = std::make_unique<Pipeline>(this->device, pipeline_config,
-                 "./shaders/constants-shader.vert.spv","./shaders/constants-shader.frag.spv");
-}
-
-void Application::create_command_buffers(){
-    this->command_buffers.resize(this->swapchain.imageCount());
-
-    VkCommandBufferAllocateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    info.commandPool = this->device.getCommandPool();
-    info.commandBufferCount = static_cast<uint32_t>(this->command_buffers.size());
-
-    if(  vkAllocateCommandBuffers( this->device.device(), &info, this->command_buffers.data() )  !=  VK_SUCCESS  ){
-        throw std::runtime_error("failed to allocate commandbuffers");
-    }
-
-    for(unsigned int i = 0; i < this->command_buffers.size(); ++i){
-        VkCommandBufferBeginInfo begin_info{};
-        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-        if( vkBeginCommandBuffer(this->command_buffers[i], &begin_info) != VK_SUCCESS ){
-            throw std::runtime_error("failed to begin command buffer at index " + std::to_string(i));
+        // filling wait time
+        while( std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0).count() < frame_time_micro_seconds ){
+            glfwPollEvents();
+            // usleep takes microseconds
+            usleep(frame_time_micro_seconds / 10);
         }
 
+        if constexpr (debug)
+            std::cout << "Frame " << frame_count << std::endl;
 
-        VkRenderPassBeginInfo render_pass_info{};
-        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_info.renderPass = this->swapchain.getRenderPass();
-        render_pass_info.framebuffer = this->swapchain.getFrameBuffer(i);
+        t0 = std::chrono::high_resolution_clock::now();
+    }
+    vkDeviceWaitIdle(this->device.get_device());
+}
 
-        render_pass_info.renderArea.offset = {0,0};
-        render_pass_info.renderArea.extent = this->swapchain.getSwapChainExtent();
+void Application::create_command_buffers(u_int32_t queue_family_index){
+    VkCommandPoolCreateInfo command_pool_ci{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = queue_family_index,
+    };
 
-        std::array<VkClearValue, 2> clear_values{};
-        clear_values[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
-        clear_values[1].depthStencil = {1.0f, 0};
+    if( vkCreateCommandPool(this->device.get_device(), &command_pool_ci, VK_NULL_HANDLE, &this->command_pool) != VK_SUCCESS )
+        throw std::runtime_error("Failed to create command pool");
 
-        render_pass_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
-        render_pass_info.pClearValues = clear_values.data();
-        vkCmdBeginRenderPass(this->command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-        this->pipeline.get()->bind(this->command_buffers[i]);
+    if constexpr (debug)
+        std::cout << "Command Pool Created" << std::endl;
 
-        // the actual magic
-        vkCmdDraw(this->command_buffers[i], 3, 1, 0, 0);
 
-        vkCmdEndRenderPass(this->command_buffers[i]);
+    VkCommandBufferAllocateInfo cmd_buffer_allocate_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = this->command_pool,
+        .commandBufferCount = static_cast<u_int32_t>(this->swapchain.get_image_count()),
+    };
 
-        if( vkEndCommandBuffer(this->command_buffers[i]) != VK_SUCCESS ){
-            throw std::runtime_error("failed to end command buffer");
+    this->command_buffers.resize(this->swapchain.get_image_count());
+    if( vkAllocateCommandBuffers(this->device.get_device(), &cmd_buffer_allocate_info, this->command_buffers.data()) != VK_SUCCESS )
+        throw std::runtime_error("Failed to allocate Command Buffers");
+
+    if constexpr (debug)
+        std::cout << "Command Buffers created" << std::endl;
+}
+
+void Application::create_semaphores(){
+    VkSemaphoreCreateInfo ci{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+    };
+
+    this->image_ready_semaphores.resize(this->swapchain.get_image_count());
+    this->image_aquired_semaphores.resize(this->swapchain.get_image_count());
+
+    for(int i = 0; i < this->swapchain.get_image_count(); ++i)
+        if( vkCreateSemaphore(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->image_ready_semaphores[i]) != VK_SUCCESS 
+         || vkCreateSemaphore(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->image_aquired_semaphores[i]) != VK_SUCCESS )
+            throw std::runtime_error(std::string("Failed to create Semaphores at index ")+std::to_string(i));
+
+    if constexpr (debug)
+        std::cout << "Semaphores created" << std::endl;
+}
+
+void Application::present_image(){
+    auto index = this->swapchain.get_current_index();
+    u_int32_t buffer = index;
+    VkPresentInfoKHR present_info{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &this->image_ready_semaphores[index],
+        .swapchainCount = 1,    
+        .pSwapchains = &this->swapchain.get_swapchain(),
+        .pImageIndices = &buffer
+    };
+    
+    if( vkQueuePresentKHR(this->device.get_queue(), &present_info) != VK_SUCCESS )
+        throw std::runtime_error("Failed to present image");
+
+}
+
+void Application::record_command_buffers(){
+    auto index = this->swapchain.get_current_index();
+    VkCommandBuffer& cmd_buffer = this->command_buffers[index];
+
+    if( vkResetCommandBuffer(cmd_buffer, 0) != VK_SUCCESS)
+        throw std::runtime_error("Failed to reset Command Buffer");
+
+
+    VkCommandBufferBeginInfo begin_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    if( vkBeginCommandBuffer(cmd_buffer, &begin_info) != VK_SUCCESS )
+        throw std::runtime_error("Failed to begin Command Buffer");
+
+
+    VkImageMemoryBarrier2 image_memory_barriers[2] = {
+        {    // image
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = 0,
+            .dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            .image = this->swapchain.get_image(index),
+            .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 }
+        },
+        {    // depth image
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+            .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            .image = this->swapchain.get_depth_image(index),
+            .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, .levelCount = 1, .layerCount = 1 }
         }
-    }
+    };
+
+    VkDependencyInfo image_barrier_dependency{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 2,
+        .pImageMemoryBarriers = &image_memory_barriers[0]
+    };
+    vkCmdPipelineBarrier2(cmd_buffer, &image_barrier_dependency);
+
+
+    VkRenderingAttachmentInfo color_attachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = this->swapchain.get_image_view(index),
+        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue{ .color = { 1.0f, 1.0f, 1.0f, 1.0f } }
+    };
+    VkRenderingAttachmentInfo depth_attachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = this->swapchain.get_depth_image_view(index),
+        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .clearValue = { .depthStencil = {1.0f,  0} }
+    };
+
+    VkRenderingInfo render_info{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {.extent = this->swapchain.get_current_extent()},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment,
+        .pDepthAttachment = &depth_attachment
+    };
+
+    vkCmdBeginRendering(cmd_buffer, &render_info);
+
+    VkViewport viewport{
+        .width = static_cast<float>(this->swapchain.get_current_extent().width),
+        .height = static_cast<float>(this->swapchain.get_current_extent().height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+
+    vkCmdSetViewport(cmd_buffer, 0, 1, &viewport);
+
+    VkRect2D scissor{.extent = this->swapchain.get_current_extent()};
+    vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
+
+    this->pipeline.bind_cmd_buffer(cmd_buffer);
+
+    // the actual magic
+    vkCmdDraw(cmd_buffer, 6, 1, 0, 0);
+
+    vkCmdEndRendering(cmd_buffer);
+
+    VkImageMemoryBarrier2 present_barrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstAccessMask = 0,
+        .oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .image = this->swapchain.get_image(index),
+        .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 }
+    };
+    VkDependencyInfo present_barrier_dependency{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &present_barrier
+    };
+
+    vkCmdPipelineBarrier2(cmd_buffer, &present_barrier_dependency);
+
+    vkEndCommandBuffer(cmd_buffer);
+
 }
 
-void Application::draw_frame(){
-    uint32_t image_index;
-    auto result = this->swapchain.acquireNextImage(&image_index);
-
-    if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR ){
-        throw std::runtime_error("failed to aquire next image");
-    }
-
-    result = this->swapchain.submitCommandBuffers(&this->command_buffers[image_index], &image_index);
-    if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR ){
-        throw std::runtime_error("failed to submit command buffers");
-    }
-
+void Application::submit_command_buffers(VkSemaphore& image_aquired_semaphore){
+    auto index = this->swapchain.get_current_index();
+    VkPipelineStageFlags wait_stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo submit_info{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &image_aquired_semaphore,
+        .pWaitDstStageMask = &wait_stages,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &this->command_buffers[index],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &this->image_ready_semaphores[index],
+    };
+    vkQueueSubmit(this->device.get_queue(), 1, &submit_info, this->swapchain.get_fence(index));
 }
-
-
 
 } // namespace velora

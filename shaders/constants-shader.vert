@@ -1,15 +1,21 @@
 #version 450
 
-float x[3] = float[](
+float x[6] = float[](
   0.0,
   -0.5,
-  0.5
+  0.5,
+  1,
+  0.8,
+  1
 );
 
-float y[3] = float[](
+float y[6] = float[](
   -0.5,
   0.5,
-  0.5
+  0.5,
+  1,
+  1,
+  0.8
 );
 
 

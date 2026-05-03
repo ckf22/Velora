@@ -6,7 +6,6 @@
 
 #include <string>
 
-
 namespace velora{
 
 class Window{
@@ -18,9 +17,7 @@ class Window{
     Window& operator=(const Window& w) = delete;
 
     bool should_close();
-    VkExtent2D get_dimensions(){ return {this->width, this->height}; }
-
-    void create_window_surface(VkInstance instance, VkSurfaceKHR * surface);
+    GLFWwindow& get_window() { return *window; }
   private:
     void create_window();
 

@@ -1,110 +1,55 @@
 #pragma once
 
+#include "instance.hpp"
 #include "window.hpp"
 
-#include <string>
+#include <memory>
 #include <vector>
+#include <optional>
 
-// my iGPU does not support validation layers
-#define NDEBUG
+namespace velora
+{
 
-namespace velora {
+class Device{
+  public:
+    Device(GLFWwindow& window);
+    ~Device();
 
-struct SwapChainSupportDetails {
-  VkSurfaceCapabilitiesKHR capabilities;
-  std::vector<VkSurfaceFormatKHR> formats;
-  std::vector<VkPresentModeKHR> presentModes;
+    Device(Device&) = delete;
+    void operator=(const Device&) = delete;
+
+    u_int32_t find_memory_type(u_int32_t filter, VkMemoryPropertyFlags flags);
+
+    VkDevice& get_device() { return logical_device; }
+    VkPhysicalDevice& get_physical_device() { return physical_device; }
+    VkSurfaceKHR& get_surface() { return surface; }
+    u_int32_t get_queue_family() { return queue_family_index; }
+    VkQueue& get_queue() { return queue; }
+  private:
+    #ifndef DEBUG
+    static constexpr bool debug = false;
+    #else
+    static constexpr bool debug = true;
+    #endif
+
+    void create_window_surface(GLFWwindow& window);
+    void select_device();
+    void create_logical_device();
+
+    bool is_device_suitable(VkPhysicalDevice _device);
+    float rate_device(VkPhysicalDevice _device);
+
+    VkPhysicalDevice physical_device;
+    VkDevice logical_device;
+    VkSurfaceKHR surface;
+    VkQueue queue;
+
+    u_int32_t queue_family_index;
+    VkSurfaceCapabilities2KHR surface_capabilities;
+    VkPhysicalDeviceSurfaceInfo2KHR surface_info;
+
+    std::optional<std::vector<const char*>> required_extensions;
+    Instance instance;
 };
 
-struct QueueFamilyIndices {
-  uint32_t graphicsFamily;
-  uint32_t presentFamily;
-  bool graphicsFamilyHasValue = false;
-  bool presentFamilyHasValue = false;
-  bool isComplete() { return graphicsFamilyHasValue && presentFamilyHasValue; }
-};
-
-class Device {
- public:
-#ifdef NDEBUG
-  const bool enableValidationLayers = false;
-#else
-  const bool enableValidationLayers = true;
-#endif
-
-  Device(Window &window);
-  ~Device();
-
-  // Not copyable or movable
-  Device(const Device &) = delete;
-  void operator=(const Device &) = delete;
-  Device(Device &&) = delete;
-  Device &operator=(Device &&) = delete;
-
-  VkCommandPool getCommandPool() { return commandPool; }
-  VkDevice device() { return device_; }
-  VkSurfaceKHR surface() { return surface_; }
-  VkQueue graphicsQueue() { return graphicsQueue_; }
-  VkQueue presentQueue() { return presentQueue_; }
-
-  SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }
-  uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-  QueueFamilyIndices findPhysicalQueueFamilies() { return findQueueFamilies(physicalDevice); }
-  VkFormat findSupportedFormat(
-      const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-
-  // Buffer Helper Functions
-  void createBuffer(
-      VkDeviceSize size,
-      VkBufferUsageFlags usage,
-      VkMemoryPropertyFlags properties,
-      VkBuffer &buffer,
-      VkDeviceMemory &bufferMemory);
-  VkCommandBuffer beginSingleTimeCommands();
-  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-  void copyBufferToImage(
-      VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount);
-
-  void createImageWithInfo(
-      const VkImageCreateInfo &imageInfo,
-      VkMemoryPropertyFlags properties,
-      VkImage &image,
-      VkDeviceMemory &imageMemory);
-
-  VkPhysicalDeviceProperties properties;
-
- private:
-  void createInstance();
-  void setupDebugMessenger();
-  void createSurface();
-  void pickPhysicalDevice();
-  void createLogicalDevice();
-  void createCommandPool();
-
-  // helper functions
-  bool isDeviceSuitable(VkPhysicalDevice device);
-  std::vector<const char *> getRequiredExtensions();
-  bool checkValidationLayerSupport();
-  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-  void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
-  void hasGflwRequiredInstanceExtensions();
-  bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-  SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-
-  VkInstance instance;
-  VkDebugUtilsMessengerEXT debugMessenger;
-  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-  Window &window;
-  VkCommandPool commandPool;
-
-  VkDevice device_;
-  VkSurfaceKHR surface_;
-  VkQueue graphicsQueue_;
-  VkQueue presentQueue_;
-
-  const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-  const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-};
-
-}  // namespace lve
+} // namespace velora
