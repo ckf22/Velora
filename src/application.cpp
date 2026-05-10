@@ -29,9 +29,9 @@ Application::~Application(){
 void Application::run(float fps){
     float frame_time_micro_seconds = 1000000.f / fps;
 
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0 = std::chrono::high_resolution_clock::now(); // used for frame timing
 
-    // IMPORTTANT: Only use for the image_aquired_semaphores because the call to aquire_next_image changes the index inbeetween signalling and waiting
+    // IMPORTANT: Only use for the image_aquired_semaphores because the call to aquire_next_image changes the index inbeetween signalling and waiting
     int local_semaphore_index = 0;
 
     u_int32_t frame_count = 0;

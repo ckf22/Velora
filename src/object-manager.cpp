@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string.h>
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+
 namespace velora{
 
 ObjectManager::ObjectManager(Device& _device, const u_int32_t _frame_count, std::vector<Vertex> object) : device{_device}, frame_count{_frame_count} {
@@ -51,16 +54,22 @@ void ObjectManager::create_buffer(){
         vkBindBufferMemory(this->device.get_device(), this->vertex_buffers[i], this->vertex_buffer_memory[i], 0);
     }
     if constexpr (debug)
-        std::cout << "Vertex Buffer created" << std::endl;
+        std::cout << "Vertex Buffers created" << std::endl;
 
 }
 void ObjectManager::update_shader_data(std::chrono::microseconds dt, u_int32_t target_index){
+    float theta = 2*3.14/120;
+    glm::mat2x2 rotation = {glm::cos(theta), -glm::sin(theta), glm::sin(theta), glm::cos(theta) };
+    for(auto& it : vertices)
+        it.position = it.position * rotation;
+
     void * data_ptr;
-    std::cout << "Copying " << sizeof(Vertex)*this->vertices.size() << " bytes" << std::endl;
     if( vkMapMemory(this->device.get_device(), this->vertex_buffer_memory[target_index], 0, sizeof(Vertex)*this->vertex_count, 0, &data_ptr) != VK_SUCCESS)
         throw std::runtime_error("Failed to Map Memory");
-    memcpy(data_ptr, &this->vertices[0], sizeof(Vertex)*this->vertices.size());
+    memcpy(data_ptr, this->vertices.data(), sizeof(Vertex)*this->vertices.size());
     vkUnmapMemory(this->device.get_device(), this->vertex_buffer_memory[target_index]);
+    if constexpr (debug)
+        std::cout << "Copied " << sizeof(Vertex)*this->vertices.size() << " bytes" << std::endl;
 }
 
 void ObjectManager::bind_cmd_buffer(VkCommandBuffer& cmd_buffer, u_int32_t index){
