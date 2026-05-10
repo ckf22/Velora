@@ -84,6 +84,7 @@ void Device::select_device(){
         VkPhysicalDeviceProperties2 properties{ .sType =  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
         vkGetPhysicalDeviceProperties2(this->physical_device, &properties);
         std::cout << "Selected Graphics Card\n\t" << properties.properties.deviceName << std::endl;
+        std::cout << "\tMax Push Constant Range Size (bytes) " << properties.properties.limits.maxPushConstantsSize << std::endl;
     }
 }
 

@@ -13,6 +13,9 @@ ObjectManager::ObjectManager(Device& _device, const u_int32_t _frame_count, std:
     this->vertices = object;
     this->vertex_count = object.size();
 
+    if( this->vertex_count % 3 != 0 )
+        std::cout << "vertex count out of 3-alignment" << std::endl;
+
     this->create_buffer();
 }
 ObjectManager::~ObjectManager(){
