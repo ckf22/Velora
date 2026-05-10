@@ -1,31 +1,31 @@
 #include <vulkan/vulkan.h>
 
 #define GLM_FORCE_RADIANS
-#include <glm/matrix.hpp>
+#include <glm/glm.hpp>
 
 #include <vector>
 
 namespace velora{
 
 struct Vertex{
-    glm::vec3 position;
-    glm::vec3 color{1};
-    glm::vec3 normal;
-    static std::vector<VkFormat> get_format_layout(){
-        return {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT};
+    glm::vec2 position;
+    static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
+    static std::vector<VkVertexInputBindingDescription> get_binding_descriptions();
+
+    static std::vector<Vertex> get_default_triangle(){
+      return {
+        {{0, -0.5}},
+        {{-0.5, 0.5}},
+        {{0.5, 0.5}}
+      };
     }
 };
 
 class Object{
   public:
     Object();
-  private:
+  //private:
     std::vector<Vertex> data;
-    std::vector<size_t> indices;
-
-    glm::vec3 position;
-    float rx = 0, ry = 0, rz = 0; // radians
-    glm::mat4x4 world_space_transformation{1};
 };
 
 }

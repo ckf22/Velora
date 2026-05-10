@@ -4,6 +4,7 @@
 #include "device.hpp"
 #include "pipeline.hpp"
 #include "swapchain.hpp"
+#include "object-manager.hpp"
 
 #include <vector>
 
@@ -40,7 +41,9 @@ class Application{
     Window window{WIDTH, HEIGHT, "Vulkan Window"};
     Device device{window.get_window()};
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
-    Pipeline pipeline{device, "./shaders/constants-shader.vert.spv", "./shaders/constants-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
+    Pipeline pipeline{device, "./shaders/simple-2d-shader.vert.spv", "./shaders/constants-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
+
+    ObjectManager object_manager{device, swapchain.get_image_count(), Vertex::get_default_triangle()};
 };
 
 }

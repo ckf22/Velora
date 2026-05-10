@@ -39,6 +39,7 @@ void Application::run(float fps){
 
         this->swapchain.wait_for_active_image_fence();
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
+        this->object_manager.update_shader_data(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0), this->swapchain.get_current_index());
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
@@ -216,8 +217,10 @@ void Application::record_command_buffers(){
 
     this->pipeline.bind_cmd_buffer(cmd_buffer);
 
+    this->object_manager.bind_cmd_buffer(cmd_buffer, index);
+
     // the actual magic
-    vkCmdDraw(cmd_buffer, 6, 1, 0, 0);
+    vkCmdDraw(cmd_buffer, this->object_manager.get_vertex_count(), 1, 0, 0);
 
     vkCmdEndRendering(cmd_buffer);
 

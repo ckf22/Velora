@@ -1,5 +1,7 @@
 #include "pipeline.hpp"
 
+#include "object.hpp"
+
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -45,12 +47,14 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
 
     auto config_info = get_default_config_info(_extent, _image_format, _depth_format);
 
+    auto binding_descriptions = Vertex::get_binding_descriptions();
+    auto attrib_descriptions = Vertex::get_attribute_descriptions();
     VkPipelineVertexInputStateCreateInfo vertex_input_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr,
+        .vertexBindingDescriptionCount = static_cast<u_int32_t>(binding_descriptions.size()),
+        .pVertexBindingDescriptions = binding_descriptions.data(),
+        .vertexAttributeDescriptionCount = static_cast<u_int32_t>(attrib_descriptions.size()),
+        .pVertexAttributeDescriptions = attrib_descriptions.data(),
     };
 
     VkPipelineViewportStateCreateInfo viewport_state_ci{
