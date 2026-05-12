@@ -60,6 +60,12 @@ void ObjectManager::create_buffer(){
         std::cout << "Vertex Buffers created" << std::endl;
 
 }
+
+void ObjectManager::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& layout){
+    ConstantRanges push{.ambient_light={0.2f,0.2f,0.2f}};
+    vkCmdPushConstants(cmd_buffer, layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ConstantRanges), &push);
+}
+
 void ObjectManager::update_shader_data(std::chrono::microseconds dt, u_int32_t target_index){
     float theta = 2*3.14/120;
     glm::mat2x2 rotation = {glm::cos(theta), -glm::sin(theta), glm::sin(theta), glm::cos(theta) };
@@ -75,7 +81,7 @@ void ObjectManager::update_shader_data(std::chrono::microseconds dt, u_int32_t t
         std::cout << "Copied " << sizeof(Vertex)*this->vertices.size() << " bytes" << std::endl;
 }
 
-void ObjectManager::bind_cmd_buffer(VkCommandBuffer& cmd_buffer, u_int32_t index){
+void ObjectManager::bind_vertex_buffer(VkCommandBuffer& cmd_buffer, u_int32_t index){
     VkDeviceSize offset{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[index], &offset);
 }

@@ -2,7 +2,7 @@
 
 namespace velora{
 
-Object::Object(){
+Object::Object(std::vector<Vertex> data, const u_int32_t _max_indices) : max_indices{_max_indices} {
 }
 
 std::vector<VkVertexInputAttributeDescription> Vertex::get_attribute_descriptions(){

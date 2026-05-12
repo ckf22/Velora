@@ -1,5 +1,6 @@
 #include "pipeline.hpp"
 
+#include "object-manager.hpp"
 #include "object.hpp"
 
 #include <fstream>
@@ -90,12 +91,16 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
 }
 
 void Pipeline::create_pipeline_layout(){
-    VkPushConstantRange push{};
+    VkPushConstantRange push{
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = sizeof(ObjectManager::ConstantRanges),
+    };
 
     VkPipelineLayoutCreateInfo layout_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = nullptr,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &push,
     };
 
     if( vkCreatePipelineLayout(this->device.get_device(), &layout_ci, nullptr, &this->pipeline_layout) != VK_SUCCESS )

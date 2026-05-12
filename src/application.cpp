@@ -181,7 +181,7 @@ void Application::record_command_buffers(){
         .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue{ .color = { 1.0f, 1.0f, 1.0f, 1.0f } }
+        .clearValue{ .color = { .1f, .1f, .1f, 1 } }
     };
     VkRenderingAttachmentInfo depth_attachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -217,7 +217,9 @@ void Application::record_command_buffers(){
 
     this->pipeline.bind_cmd_buffer(cmd_buffer);
 
-    this->object_manager.bind_cmd_buffer(cmd_buffer, index);
+    this->object_manager.bind_vertex_buffer(cmd_buffer, index);
+
+    this->object_manager.push_constant_ranges(cmd_buffer, this->pipeline.get_pipeline_layout());
 
     // the actual magic
     vkCmdDraw(cmd_buffer, this->object_manager.get_vertex_count(), 1, 0, 0);
