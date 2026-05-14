@@ -46,8 +46,7 @@ class ObjectManager{
     //std::vector<Object> objects;
     u_int32_t vertex_count = 0;
 
-    float rotation_z = 0;
-    TransformComponent tranform;
+    TransformComponent tranform{{.0f,.0f,.0f}, {1,1,1}, {.2f, 0, .1f}, {.0f, .0f, .5f}};
 };
 
 }

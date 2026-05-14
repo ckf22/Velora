@@ -16,13 +16,24 @@ glm::mat4 TransformComponent::get_transform(bool updated){
 }
 
 void TransformComponent::update_transform(){
+    // needs to be read from bottom to top due to matrix multiplication
     this->transform = glm::mat4{1.f};
-    this->transform = glm::translate(this->transform, this->anchor - this->translation);
-    this->transform = glm::rotate(this->transform, this->rotation.y, {0.f,1.f,0.f});
-    this->transform = glm::rotate(this->transform, this->rotation.x, {1.f,0.f,0.f});
-    this->transform = glm::rotate(this->transform, this->rotation.z, {0.f,0.f,1.f});
-    this->transform = glm::translate(this->transform, this->translation - this->anchor);
+
+    // scaling is the last step so no large or small numbers increase the impact of 32bit floating point rounding errrors
     this->transform = glm::scale(this->transform, this->scale);
+
+    // translating the object to its original position, then applying the specified translation
+    this->transform = glm::translate(this->transform, this->translation + this->anchor);
+
+    // Tait-Bryan Angles y(1) x(2) z(3)
+    this->transform = glm::rotate(this->transform, this->rotation.y, {0.f,1.f,0.f});
+
+    this->transform = glm::rotate(this->transform, this->rotation.x, {1.f,0.f,0.f});
+
+    this->transform = glm::rotate(this->transform, this->rotation.z, {0.f,0.f,1.f});
+
+    // translating so the anchor is moved to the origin
+    this->transform = glm::translate(this->transform, -this->anchor);
 }
 
 

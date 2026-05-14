@@ -63,11 +63,6 @@ void ObjectManager::create_buffer(){
 }
 
 void ObjectManager::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& layout){
-    this->rotation_z = glm::mod(this->rotation_z + .02f, glm::two_pi<float>());
-    this->tranform.anchor = {0,0,0.5};
-    this->tranform.rotation = {0.2, rotation_z, 0.1};
-    this->tranform.scale = {1,1,1};
-
     ConstantRanges push{.projection=this->tranform.get_transform(true), .ambient_light={0.0f,0.0f,0.0f}};
 
 
@@ -75,7 +70,10 @@ void ObjectManager::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipeline
 }
 
 void ObjectManager::update_shader_data(std::chrono::microseconds dt, u_int32_t target_index){
-    void * data_ptr;
+    this->tranform.rotation.y = glm::mod(this->tranform.rotation.y + (.004f * (dt.count()/2000)), glm::two_pi<float>());
+    this->tranform.rotation.z = glm::mod(this->tranform.rotation.y + (.001f * (dt.count()/2000)), glm::two_pi<float>());
+
+   void * data_ptr;
     if( vkMapMemory(this->device.get_device(), this->vertex_buffer_memory[target_index], 0, sizeof(Vertex)*this->vertex_count, 0, &data_ptr) != VK_SUCCESS)
         throw std::runtime_error("Failed to Map Memory");
     memcpy(data_ptr, this->vertices.data(), sizeof(Vertex)*this->vertices.size());

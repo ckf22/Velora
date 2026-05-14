@@ -30,6 +30,7 @@ void Application::run(float fps){
     float frame_time_micro_seconds = 1000000.f / fps;
 
     auto t0 = std::chrono::high_resolution_clock::now(); // used for frame timing
+    auto t_u = t0; // used for updating shader data
 
     // IMPORTANT: Only use for the image_aquired_semaphores because the call to aquire_next_image changes the index inbeetween signalling and waiting
     int local_semaphore_index = 0;
@@ -39,7 +40,8 @@ void Application::run(float fps){
 
         this->swapchain.wait_for_active_image_fence();
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
-        this->object_manager.update_shader_data(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0), this->swapchain.get_current_index());
+        this->object_manager.update_shader_data(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_u), this->swapchain.get_current_index());
+        t_u = std::chrono::high_resolution_clock::now();
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
