@@ -37,17 +37,19 @@ class SwapChain{
 
     void recreate_swapchain(unsigned int _width, unsigned int _height);
   private:
-    void initialise_swapchain(Device& _device);
+    void initialise_swapchain();
 
-    VkFormat choose_format(VkSurfaceKHR& _surface, Device& device, VkSurfaceCapabilitiesKHR capabilities);
-    VkPresentModeKHR choose_present_mode(VkSurfaceKHR& _surface, Device& device, VkSurfaceCapabilitiesKHR capabilities);
-    VkFormat choose_depth_format(Device& _device);
+    void delete_objects();
+
+    VkFormat choose_format(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities);
+    VkPresentModeKHR choose_present_mode(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities);
+    VkFormat choose_depth_format();
 
     VkFormat depth_format;
     VkFormat image_format;
 
     VkSurfaceKHR& surface;
-    VkDevice& device;
+    Device& device;
 
     VkExtent2D extent;
     VkSwapchainCreateInfoKHR swapchain_ci;

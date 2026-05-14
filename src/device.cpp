@@ -7,8 +7,8 @@
 namespace velora
 {
 
-Device::Device(GLFWwindow& window){
-    this->create_window_surface(window);
+Device::Device(GLFWwindow& _window) : window{_window} {
+    this->create_window_surface();
     this->select_device();
     this->create_logical_device();
 }
@@ -29,8 +29,17 @@ u_int32_t Device::find_memory_type(u_int32_t filter, VkMemoryPropertyFlags flags
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void Device::create_window_surface(GLFWwindow& window){
-    if( glfwCreateWindowSurface(this->instance.get_instance(), &window, nullptr, &this->surface) != VK_SUCCESS ){
+void Device::destroy_window_surface(){
+    vkDestroySurfaceKHR(this->instance.get_instance(), this->surface, nullptr);
+}
+
+
+void Device::recreate_window_surface(){
+    this->create_window_surface();
+}
+
+void Device::create_window_surface(){
+    if( glfwCreateWindowSurface(this->instance.get_instance(), &this->window, nullptr, &this->surface) != VK_SUCCESS ){
         throw std::runtime_error("failed to create window surface");
     }
 

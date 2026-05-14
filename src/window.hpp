@@ -18,13 +18,14 @@ class Window{
 
     bool should_close();
     GLFWwindow& get_window() { return *window; }
+    
   private:
     void create_window();
 
     GLFWwindow * window;
 
-    const unsigned int width;
-    const unsigned int height;
+    unsigned int width;
+    unsigned int height;
     const std::string name;
 };
 

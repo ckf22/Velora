@@ -25,6 +25,9 @@ class Device{
     VkSurfaceKHR& get_surface() { return surface; }
     u_int32_t get_queue_family() { return queue_family_index; }
     VkQueue& get_queue() { return queue; }
+
+    void destroy_window_surface();
+    void recreate_window_surface();
   private:
     #ifndef DEBUG
     static constexpr bool debug = false;
@@ -32,13 +35,14 @@ class Device{
     static constexpr bool debug = true;
     #endif
 
-    void create_window_surface(GLFWwindow& window);
+    void create_window_surface();
     void select_device();
     void create_logical_device();
 
     bool is_device_suitable(VkPhysicalDevice _device);
     float rate_device(VkPhysicalDevice _device);
 
+    GLFWwindow& window;
     VkPhysicalDevice physical_device;
     VkDevice logical_device;
     VkSurfaceKHR surface;

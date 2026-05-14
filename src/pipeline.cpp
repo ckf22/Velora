@@ -61,10 +61,18 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
     VkPipelineViewportStateCreateInfo viewport_state_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
-        .pViewports = &config_info.viewport,
+        //.pViewports = &config_info.viewport,
         .scissorCount = 1,
-        .pScissors = &config_info.scissor,
+        //.pScissors = &config_info.scissor,
     };
+
+    std::vector<VkDynamicState> dynamic_states{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dynamic_state_ci{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = 2,
+        .pDynamicStates = dynamic_states.data()
+    };
+
 
     this->create_pipeline_layout();
 
@@ -82,6 +90,7 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
         .pColorBlendState = &config_info.color_blend,
         .layout = this->pipeline_layout,
     };
+    pipeline_ci.pDynamicState = &dynamic_state_ci;
 
     if( vkCreateGraphicsPipelines(this->device.get_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &this->pipeline) != VK_SUCCESS )
         throw std::runtime_error("Failed to create graphics pipeline");
