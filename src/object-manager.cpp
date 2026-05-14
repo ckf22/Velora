@@ -6,6 +6,7 @@
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace velora{
 
@@ -32,7 +33,7 @@ void ObjectManager::create_buffer(){
     for(int i = 0; i < this->frame_count; ++i){
         VkBufferCreateInfo buffer_ci{
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = sizeof(Vertex)*1000,  // abitrarily high number so the vertex buffer will fit
+            .size = sizeof(Vertex)*1000,  // abitrarily high number so the data will fit
             .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
         };
@@ -62,16 +63,18 @@ void ObjectManager::create_buffer(){
 }
 
 void ObjectManager::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& layout){
-    ConstantRanges push{.ambient_light={0.2f,0.2f,0.2f}};
+    this->rotation_z = glm::mod(this->rotation_z + .02f, glm::two_pi<float>());
+    this->tranform.anchor = {0,0,0.5};
+    this->tranform.rotation = {0.2, rotation_z, 0.1};
+    this->tranform.scale = {1,1,1};
+
+    ConstantRanges push{.projection=this->tranform.get_transform(true), .ambient_light={0.0f,0.0f,0.0f}};
+
+
     vkCmdPushConstants(cmd_buffer, layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(ConstantRanges), &push);
 }
 
 void ObjectManager::update_shader_data(std::chrono::microseconds dt, u_int32_t target_index){
-    float theta = 2*3.14/120;
-    glm::mat2x2 rotation = {glm::cos(theta), -glm::sin(theta), glm::sin(theta), glm::cos(theta) };
-    for(auto& it : vertices)
-        it.position = it.position * rotation;
-
     void * data_ptr;
     if( vkMapMemory(this->device.get_device(), this->vertex_buffer_memory[target_index], 0, sizeof(Vertex)*this->vertex_count, 0, &data_ptr) != VK_SUCCESS)
         throw std::runtime_error("Failed to Map Memory");
