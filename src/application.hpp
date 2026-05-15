@@ -21,6 +21,7 @@ class Application{
     ~Application();
 
     void run(float fps = 60);
+    void resize(u_int32_t width, u_int32_t height);
   private:
     void create_command_buffers(u_int32_t queue_family_index);
     void create_semaphores();

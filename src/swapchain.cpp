@@ -15,13 +15,14 @@ SwapChain::SwapChain(VkSurfaceKHR& _surface, Device& _device, unsigned int _widt
 SwapChain::~SwapChain(){
     vkDestroySwapchainKHR(this->device.get_device(), this->swapchain, nullptr);
 
-    this->delete_objects();
-}
-
-void SwapChain::delete_objects(){
     for(auto& it : this->fences)
         vkDestroyFence(this->device.get_device(), it, nullptr);
 
+
+    this->delete_image_resources();
+}
+
+void SwapChain::delete_image_resources(){
     for(auto& it : this->image_views)
         vkDestroyImageView(this->device.get_device(), it, nullptr);
 
@@ -54,36 +55,61 @@ void SwapChain::wait_for_active_image_fence(){
 void SwapChain::recreate_swapchain(unsigned int _width, unsigned int _height){
     this->extent = VkExtent2D{.width = _width, .height = _height};
 
-    this->delete_objects();
-    this->initialise_swapchain();
 
-    // creating first fence at index 0 unsignalled
-    vkDestroyFence(this->device.get_device(), this->fences[0], VK_NULL_HANDLE);
+    this->delete_image_resources();
 
-    VkFenceCreateInfo fence_ci{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-    if( vkCreateFence(this->device.get_device(), &fence_ci, VK_NULL_HANDLE, &this->fences[0]) != VK_SUCCESS ) throw std::runtime_error("Failed to recreate Fence");
+    this->create_swapchain();
+    auto count = this->create_image_resources();
+    this->create_depth_resources(count);
+
+    if constexpr (debug)
+        std::cout << "Resized to " << _width << "x" << _height << " px" << std::endl;
 }
 
 void SwapChain::initialise_swapchain() {
+    this->create_swapchain();
+
+    auto count = this->create_image_resources();
+
+    this->create_depth_resources(count);
+    if constexpr (debug)
+        std::cout << "Depth Images Created\nDepth Image Views Created" << std::endl;
+
+    this->create_fences(count);
+    if constexpr (debug)
+        std::cout << "Fences created" << std::endl;
+
+    if constexpr (debug)
+        std::cout << "Swapchain created" << std::endl;
+}
+
+void SwapChain::create_swapchain(){
     VkSurfaceCapabilitiesKHR capabilities{};
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->device.get_physical_device(), this->surface, &capabilities);
+
+    this->choose_format(this->surface, capabilities);
+    this->choose_depth_format();
+    this->choose_present_mode(this->surface, capabilities);
+
 
     this->swapchain_ci = VkSwapchainCreateInfoKHR{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = this->surface,
         .minImageCount = capabilities.minImageCount,
-        .imageFormat = this->choose_format(this->surface, capabilities),
+        .imageFormat = this->image_format,
         .imageExtent = {.width=this->extent.width, .height=this->extent.height},
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = this->choose_present_mode(this->surface, capabilities)
+        .presentMode = this->present_mode
     };
 
     if( vkCreateSwapchainKHR(this->device.get_device(), &this->swapchain_ci, nullptr, &this->swapchain) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Swapchain");
+}
 
+u_int32_t SwapChain::create_image_resources(){
     u_int32_t count{};
     vkGetSwapchainImagesKHR(this->device.get_device(), this->swapchain, &count, nullptr);
 
@@ -106,7 +132,10 @@ void SwapChain::initialise_swapchain() {
             throw std::runtime_error(std::string("Failed to create Image View at index ")+std::to_string(i));
     }
 
+    return count;
+}
 
+void SwapChain::create_depth_resources(u_int32_t count){
     VkImageCreateInfo depth_image_ci{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -125,9 +154,6 @@ void SwapChain::initialise_swapchain() {
         if(vkCreateImage(this->device.get_device(), &depth_image_ci, nullptr, &this->depth_images[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Depth Image at index ")+std::to_string(i));
     }
-
-    if constexpr (debug)
-        std::cout << "Depth Images Created" << std::endl;
 
     this->depth_image_views.resize(count);
     this->depth_image_ram.resize(count);
@@ -152,14 +178,14 @@ void SwapChain::initialise_swapchain() {
             throw std::runtime_error(std::string("Failed to create Depth Image View at index ")+std::to_string(i));
     }
 
-    if constexpr (debug)
-        std::cout << "Depth Image Views created" << std::endl;
+}
 
-
+void SwapChain::create_fences(u_int32_t count){
     VkFenceCreateInfo fence_ci{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
+
     this->fences.resize(count);
     for(int i = 0; i < count; ++i){
         if(vkCreateFence(this->device.get_device(), &fence_ci, VK_NULL_HANDLE, &this->fences[i]) != VK_SUCCESS)
@@ -167,12 +193,6 @@ void SwapChain::initialise_swapchain() {
         fence_ci.flags = 0; // only the first fence needs to be signalled due to the render loop
     }
 
-    if constexpr (debug)
-        std::cout << "Fences created" << std::endl;
-
-
-    if constexpr (debug)
-        std::cout << "Swapchain created" << std::endl;
 }
 
 VkFormat SwapChain::choose_format(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities){
@@ -244,6 +264,7 @@ VkPresentModeKHR SwapChain::choose_present_mode(VkSurfaceKHR& _surface, VkSurfac
     if constexpr (debug)
         std::cout << "Present Mode: " << *present_mode << std::endl;
 
+    this->present_mode = *present_mode;
     return *present_mode;
 }
 

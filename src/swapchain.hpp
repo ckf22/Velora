@@ -3,6 +3,8 @@
 #include "instance.hpp"
 #include "device.hpp"
 
+
+
 namespace velora{
 
 class SwapChain{
@@ -38,8 +40,12 @@ class SwapChain{
     void recreate_swapchain(unsigned int _width, unsigned int _height);
   private:
     void initialise_swapchain();
+    void create_swapchain();
+    void create_fences(u_int32_t count);
+    u_int32_t create_image_resources();
+    void create_depth_resources(u_int32_t count);
 
-    void delete_objects();
+    void delete_image_resources();
 
     VkFormat choose_format(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities);
     VkPresentModeKHR choose_present_mode(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities);
@@ -47,6 +53,7 @@ class SwapChain{
 
     VkFormat depth_format;
     VkFormat image_format;
+    VkPresentModeKHR present_mode;
 
     VkSurfaceKHR& surface;
     Device& device;

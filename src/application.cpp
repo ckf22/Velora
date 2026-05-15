@@ -39,14 +39,7 @@ void Application::run(float fps){
     while(!this->window.should_close()){
 
         this->swapchain.wait_for_active_image_fence();
-        if(frame_count == 60){
-            glfwSetWindowSize(&this->window.get_window(), 400, 400);
-            vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
-            this->device.destroy_window_surface();
-            this->device.recreate_window_surface();
-            this->swapchain.recreate_swapchain(400,400);
-        }
-        if(frame_count == 64) break;
+        if(frame_count == 60) this->resize(1200, 900);
 
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
         this->object_manager.update_shader_data(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_u), this->swapchain.get_current_index());
@@ -73,6 +66,16 @@ void Application::run(float fps){
         t0 = std::chrono::high_resolution_clock::now();
     }
     vkDeviceWaitIdle(this->device.get_device());
+}
+
+void Application::resize(u_int32_t width, u_int32_t height){
+    vkDeviceWaitIdle(this->device.get_device());
+
+    glfwSetWindowSize(&this->window.get_window(), width, height);
+    vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
+    this->device.destroy_window_surface();
+    this->device.recreate_window_surface();
+    this->swapchain.recreate_swapchain(width, height);
 }
 
 void Application::create_command_buffers(u_int32_t queue_family_index){
