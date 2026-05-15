@@ -52,8 +52,8 @@ void SwapChain::wait_for_active_image_fence(){
         throw std::runtime_error(std::string("Failed to reset Fence; index ")+std::to_string(this->current_index));
 }
 
-void SwapChain::recreate_swapchain(unsigned int _width, unsigned int _height){
-    this->extent = VkExtent2D{.width = _width, .height = _height};
+void SwapChain::recreate_swapchain(VkExtent2D new_size){
+    this->extent = new_size;
 
 
     this->delete_image_resources();
@@ -63,7 +63,7 @@ void SwapChain::recreate_swapchain(unsigned int _width, unsigned int _height){
     this->create_depth_resources(count);
 
     if constexpr (debug)
-        std::cout << "Resized to " << _width << "x" << _height << " px" << std::endl;
+        std::cout << "Resized to " << new_size.width << "x" << new_size.height << " px" << std::endl;
 }
 
 void SwapChain::initialise_swapchain() {
@@ -139,7 +139,7 @@ void SwapChain::create_depth_resources(u_int32_t count){
     VkImageCreateInfo depth_image_ci{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = this->choose_depth_format(),
+        .format = this->depth_format,
         .extent{.width = this->extent.width, .height = this->extent.height, .depth = 1 },
         .mipLevels = 1,
         .arrayLayers = 1,

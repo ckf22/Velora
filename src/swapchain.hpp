@@ -37,7 +37,7 @@ class SwapChain{
     void wait_for_active_image_fence();
     void aquire_next_image(VkSemaphore& image_ready_semaphore);
 
-    void recreate_swapchain(unsigned int _width, unsigned int _height);
+    void recreate_swapchain(VkExtent2D new_size);
   private:
     void initialise_swapchain();
     void create_swapchain();

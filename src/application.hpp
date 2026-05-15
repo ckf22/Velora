@@ -23,6 +23,7 @@ class Application{
     void run(float fps = 60);
     void resize(u_int32_t width, u_int32_t height);
   private:
+    void resize(); // resizes to current window dimensions
     void create_command_buffers(u_int32_t queue_family_index);
     void create_semaphores();
 
@@ -39,7 +40,7 @@ class Application{
     VkCommandPool command_pool{};
     std::vector<VkCommandBuffer> command_buffers;
 
-    Window window{WIDTH, HEIGHT, "Vulkan Window"};
+    Window window{"Vulkan Window", WIDTH, HEIGHT};
     Device device{window.get_window()};
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
     Pipeline pipeline{device, "./shaders/simple-3d-shader.vert.spv", "./shaders/simple-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};

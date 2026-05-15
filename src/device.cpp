@@ -9,6 +9,9 @@ namespace velora
 
 Device::Device(GLFWwindow& _window) : window{_window} {
     this->create_window_surface();
+    if constexpr (debug)
+        std::cout << "Window surface created" << std::endl;
+
     this->select_device();
     this->create_logical_device();
 }
@@ -44,9 +47,6 @@ void Device::create_window_surface(){
     }
 
     //vkGetPhysicalDeviceSurfaceCapabilities2KHR(this->physical_device, &this->surface_info, &this->surface_capabilities);
-
-    if constexpr (debug)
-        std::cout << "Window surface created" << std::endl;
 }
 
 void Device::select_device(){

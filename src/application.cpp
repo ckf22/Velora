@@ -39,7 +39,7 @@ void Application::run(float fps){
     while(!this->window.should_close()){
 
         this->swapchain.wait_for_active_image_fence();
-        if(frame_count == 60) this->resize(1200, 900);
+        if(window.was_window_resized()) this->resize();
 
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
         this->object_manager.update_shader_data(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_u), this->swapchain.get_current_index());
@@ -47,6 +47,7 @@ void Application::run(float fps){
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
+        //if(window.was_window_resized()) this->resize();
         
         local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
         frame_count++;
@@ -75,7 +76,19 @@ void Application::resize(u_int32_t width, u_int32_t height){
     vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
     this->device.destroy_window_surface();
     this->device.recreate_window_surface();
-    this->swapchain.recreate_swapchain(width, height);
+    this->swapchain.recreate_swapchain({width, height});
+}
+
+void Application::resize(){
+    if( !this->window.was_window_resized() ) return;
+
+    vkDeviceWaitIdle(this->device.get_device());
+    vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
+    this->device.destroy_window_surface();
+    this->device.recreate_window_surface();
+    this->swapchain.recreate_swapchain(window.get_window_extent());
+
+    this->window.reset_window_resized_flag();
 }
 
 void Application::create_command_buffers(u_int32_t queue_family_index){
@@ -135,7 +148,8 @@ void Application::present_image(){
         .pImageIndices = &buffer
     };
     
-    if( vkQueuePresentKHR(this->device.get_queue(), &present_info) != VK_SUCCESS )
+    auto result = vkQueuePresentKHR(this->device.get_queue(), &present_info);
+    if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         throw std::runtime_error("Failed to present image");
 
 }
