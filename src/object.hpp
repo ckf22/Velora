@@ -21,7 +21,7 @@ struct Vertex{
     static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
     static std::vector<VkVertexInputBindingDescription> get_binding_descriptions();
 
-    static std::vector<Vertex> get_default_cube(){
+    static std::vector<Vertex> get_default_cube(glm::vec3 offset = {0,0,0}){
         std::vector<Vertex> buffer = {
             // left face (white)
             {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
@@ -72,11 +72,11 @@ struct Vertex{
             {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}}
         };
 
-        glm::vec3 offset{0.f,0.f,.5f};
-        glm::vec3 scale{.5f, .5f, .5f};
+        //glm::vec3 offset{0.f,0.f,.5f};
+        //glm::vec3 scale{.5f, .5f, .5f};
 
         for(auto& it : buffer)
-            it.position = (it.position * scale) + offset;
+            it.position = it.position + offset;
         return buffer;
     };
 };
@@ -85,11 +85,12 @@ class Object{
   public:
     Object(std::vector<Vertex> data, const u_int32_t _max_indices);
 
-    glm::mat4 get_transform();
+    //glm::mat4 get_transform();
     u_int32_t write_data(void * destination);
 
     const u_int32_t get_max_vertex_count() const { return this->max_indices; }
     u_int32_t get_vertex_count() { return this->vertices.size(); }
+    u_int32_t get_required_ram() { return this->vertices.size() * sizeof(Vertex); }
     std::vector<Vertex>& get_vertices() { return this->vertices; }
   private:
     std::vector<Vertex> vertices;
@@ -97,7 +98,7 @@ class Object{
 
     const u_int32_t max_indices;
 
-    TransformComponent transform;
+    //TransformComponent transform;
 };
 
 }

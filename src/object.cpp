@@ -1,17 +1,20 @@
 #include "object.hpp"
 
+#define GLM_FORCE_RADIANS
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <memory>
 #include <string.h>
 
 namespace velora{
 
 Object::Object(std::vector<Vertex> data, const u_int32_t _max_indices) : max_indices{_max_indices} {
+    this->vertices = std::move(data);
 }
 
-glm::mat4 Object::get_transform(){
+/*glm::mat4 Object::get_transform(){
     return glm::mat4{1.f};
-}
+}*/
 u_int32_t Object::write_data(void * destination){
     u_int32_t bytes = sizeof(Vertex)*this->vertices.size();
     memcpy(destination, this->vertices.data(), bytes);

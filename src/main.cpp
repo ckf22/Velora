@@ -8,7 +8,7 @@ int main() {
 
     velora::Application app{};
     try{
-        app.run(20);
+        app.run(60);
     } catch(const std::exception& e ){
         std::cerr << "Fatal error occured:\n" << e.what() << std::endl;
         return EXIT_FAILURE;

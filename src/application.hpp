@@ -4,7 +4,7 @@
 #include "device.hpp"
 #include "pipeline.hpp"
 #include "swapchain.hpp"
-#include "object-manager.hpp"
+#include "render-system.hpp"
 
 #include <vector>
 
@@ -45,7 +45,8 @@ class Application{
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
     Pipeline pipeline{device, "./shaders/simple-3d-shader.vert.spv", "./shaders/simple-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
 
-    ObjectManager object_manager{device, static_cast<u_int32_t>(swapchain.get_image_count()), Vertex::get_default_cube()};
+    RenderSystem render_system{device, static_cast<u_int32_t>(swapchain.get_image_count())};
+
 };
 
 }

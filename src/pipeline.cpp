@@ -1,6 +1,6 @@
 #include "pipeline.hpp"
 
-#include "object-manager.hpp"
+#include "render-system.hpp"
 #include "object.hpp"
 
 #include <fstream>
@@ -103,7 +103,7 @@ void Pipeline::create_pipeline_layout(){
     VkPushConstantRange push{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(ObjectManager::ConstantRanges),
+        .size = sizeof(RenderSystem::PushConstantRange),
     };
 
     VkPipelineLayoutCreateInfo layout_ci{

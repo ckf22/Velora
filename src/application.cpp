@@ -42,12 +42,10 @@ void Application::run(float fps){
         if(window.was_window_resized()) this->resize();
 
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
-        this->object_manager.update_shader_data(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_u), this->swapchain.get_current_index());
-        t_u = std::chrono::high_resolution_clock::now();
+        this->render_system.update_shader_data();
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
-        //if(window.was_window_resized()) this->resize();
         
         local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
         frame_count++;
@@ -245,12 +243,14 @@ void Application::record_command_buffers(){
 
     this->pipeline.bind_cmd_buffer(cmd_buffer);
 
-    this->object_manager.bind_vertex_buffer(cmd_buffer, index);
+    this->render_system.upload_shader_data(index);
 
-    this->object_manager.push_constant_ranges(cmd_buffer, this->pipeline.get_pipeline_layout());
+    this->render_system.bind(cmd_buffer, index);
+
+    this->render_system.push_constant_ranges(cmd_buffer, this->pipeline.get_pipeline_layout());
 
     // the actual magic
-    vkCmdDraw(cmd_buffer, this->object_manager.get_vertex_count(), 1, 0, 0);
+    vkCmdDraw(cmd_buffer, this->render_system.get_vertex_count(), 1, 0, 0);
 
     vkCmdEndRendering(cmd_buffer);
 
