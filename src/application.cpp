@@ -42,7 +42,8 @@ void Application::run(float fps){
         if(window.was_window_resized()) this->resize();
 
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
-        this->render_system.update_shader_data();
+        this->render_system.update_shader_data( std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t_u) );
+        t_u = std::chrono::high_resolution_clock::now();
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
@@ -75,6 +76,7 @@ void Application::resize(u_int32_t width, u_int32_t height){
     this->device.destroy_window_surface();
     this->device.recreate_window_surface();
     this->swapchain.recreate_swapchain({width, height});
+    this->render_system.register_resize(width, height);
 }
 
 void Application::resize(){
@@ -84,7 +86,9 @@ void Application::resize(){
     vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
     this->device.destroy_window_surface();
     this->device.recreate_window_surface();
-    this->swapchain.recreate_swapchain(window.get_window_extent());
+    auto new_extent = window.get_window_extent();
+    this->swapchain.recreate_swapchain(new_extent);
+    this->render_system.register_resize(new_extent.width, new_extent.height);
 
     this->window.reset_window_resized_flag();
 }

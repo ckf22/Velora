@@ -5,6 +5,7 @@
 #include "device.hpp"
 
 #include <memory>
+#include <chrono>
 
 namespace velora{
 
@@ -20,7 +21,7 @@ class RenderSystem{
         glm::mat4 worldspace_transformation{1.f};
     };
 
-    RenderSystem(Device& _device, const u_int32_t _frame_count);
+    RenderSystem(Device& _device, const u_int32_t _frame_count, int width, int height);
     ~RenderSystem();
 
     RenderSystem& operator=(RenderSystem&) = delete;
@@ -28,7 +29,9 @@ class RenderSystem{
 
     u_int32_t get_vertex_count() { return objects.get_vertex_count(); }
 
-    void update_shader_data();
+    void register_resize(int width, int height);
+
+    void update_shader_data(std::chrono::microseconds dt);
     void upload_shader_data(u_int32_t frame_index);
     void push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout);
     void bind(VkCommandBuffer& cmd_buffer, u_int32_t frame_index);
@@ -43,11 +46,13 @@ class RenderSystem{
     std::vector<VkDeviceMemory> vertex_buffer_memory;
     u_int32_t buffer_size;
 
+    float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
 
     // temp
-    TransformComponent transform{{0,0,.5f}, {1,1,1}, {.1f,.25f, .4f}, {0,0,.5f}};
+    TransformComponent transform{{0,0,8.f}, {2,2,2}, {.1f,.25f, .4f}, {0,0,.5f}};
+    float dy = 0;
 };
 
 } // namespace velora

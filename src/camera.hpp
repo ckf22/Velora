@@ -9,6 +9,7 @@ namespace velora{
 struct Camera{
     glm::mat4 orthographic_projection(float near, float far, float left, float right, float bottom, float top);
     glm::mat4 orthographic_projection(glm::vec3 c1, glm::vec3 c2);
+    glm::mat4 perspective_projection(float near, float far, float theta, float aspect);
     glm::mat4 projection{1.f};
 };
 

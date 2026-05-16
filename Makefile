@@ -51,5 +51,9 @@ touch:
 	touch $(SRCS)
 	touch $(VERT_SRCS) $(FRAG_SRCS)
 
+app:
+	$(CXX) $(INC_FLAGS) $(CXXFLAGS) $(SRCS) -O3 -o app -L $(LIBS)
+
+
 
 -include $(DEPS)

@@ -1,18 +1,21 @@
 #include "render-system.hpp"
 
-#include <stdexcept>
-#include <iostream>
-
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <stdexcept>
+#include <iostream>
+
 namespace velora{
 
-RenderSystem::RenderSystem(Device& _device, u_int32_t _frame_count) : device{_device}, frame_count{_frame_count} {
+RenderSystem::RenderSystem(Device& _device, u_int32_t _frame_count, int width, int height) : device{_device}, frame_count{_frame_count} {
     this->create_buffers();
     this->populate();
+
+    //this->camera.orthographic_projection(-5, 15, 3, -3, -3, 3);
+    this->register_resize(width, height);
 }
 
 RenderSystem::~RenderSystem(){
@@ -23,9 +26,18 @@ RenderSystem::~RenderSystem(){
         vkFreeMemory(this->device.get_device(), it, nullptr);
 }
 
-void RenderSystem::update_shader_data(){
-    this->transform.rotation.y = glm::mod(this->transform.rotation.y + .02f, glm::two_pi<float>());
-    this->transform.rotation.z = glm::mod(this->transform.rotation.z + .008f, glm::two_pi<float>());
+void RenderSystem::register_resize(int width, int height){
+    this->aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+    this->camera.perspective_projection(.1f, 20.f, 60, this->aspect_ratio);
+}
+
+void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is short for delta time
+    this->transform.rotation.y = glm::mod( this->transform.rotation.y + (.002f*(dt.count()/1024))  , glm::two_pi<float>());
+    this->transform.rotation.z = glm::mod( this->transform.rotation.z + (.0008f*(dt.count()/1024)) , glm::two_pi<float>());
+    this->transform.rotation.x = glm::mod( this->transform.rotation.x + (.0002f*(dt.count()/1024)) , glm::two_pi<float>());
+
+    this->dy += (  .003f * (dt.count()/1024)  );
+    this->transform.translation.x = glm::sin(this->dy)*3;
 }
 
 void RenderSystem::upload_shader_data(u_int32_t frame_index){
@@ -41,7 +53,7 @@ void RenderSystem::upload_shader_data(u_int32_t frame_index){
 
 void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout){
     PushConstantRange push{
-        .perspective_projection = this->camera.orthographic_projection(-5, 15, 5, -5, -5, 5),/*glm::mat4{1.f},*/
+        .perspective_projection = this->camera.projection,
         .worldspace_transformation = this->transform.get_transform(true)
     };
     vkCmdPushConstants(cmd_buffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -55,12 +67,12 @@ void RenderSystem::bind(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
 
 void RenderSystem::populate(){
     auto buffer = Vertex::get_default_cube();
-    Object _object{buffer, buffer.size()};
+    Object _object{buffer, static_cast<u_int32_t>(buffer.size())};
     this->objects.add_object(_object);
 
-    auto buffer2 = Vertex::get_default_cube({1,1,1});
-    Object __object{buffer2, buffer2.size()};
-    this->objects.add_object(__object);
+    /*auto buffer2 = Vertex::get_default_cube({1,1,1});
+    Object __object{buffer2, static_cast<u_int32_t>(buffer2.size())};
+    this->objects.add_object(__object);*/
 }
 
 
@@ -68,12 +80,12 @@ void RenderSystem::create_buffers(){
 
     this->vertex_buffers.resize(this->frame_count);
     this->vertex_buffer_memory.resize(this->frame_count);
-    this->buffer_size = sizeof(Vertex)*2000;
+    this->buffer_size = sizeof(Vertex)*2000; // abitrarily high number so the data will fit
 
     for(int i = 0; i < this->frame_count; ++i){
         VkBufferCreateInfo buffer_ci{
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = this->buffer_size,  // abitrarily high number so the data will fit
+            .size = this->buffer_size,
             .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
         };
