@@ -15,6 +15,7 @@ RenderSystem::RenderSystem(Device& _device, u_int32_t _frame_count, int width, i
     this->populate();
 
     //this->camera.orthographic_projection(-5, 15, 3, -3, -3, 3);
+    this->camera.view_direction({-2, -.5f, -5}, {.5f, 0.f, .9f}, {.0f, -1.f, .0f});
     this->register_resize(width, height);
 }
 
@@ -53,7 +54,7 @@ void RenderSystem::upload_shader_data(u_int32_t frame_index){
 
 void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout){
     PushConstantRange push{
-        .perspective_projection = this->camera.projection,
+        .perspective_projection = this->camera.get_projection_view_matrix(),
         .worldspace_transformation = this->transform.get_transform(true)
     };
     vkCmdPushConstants(cmd_buffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -70,9 +71,9 @@ void RenderSystem::populate(){
     Object _object{buffer, static_cast<u_int32_t>(buffer.size())};
     this->objects.add_object(_object);
 
-    /*auto buffer2 = Vertex::get_default_cube({1,1,1});
+    auto buffer2 = Vertex::get_default_cube({1,1,1});
     Object __object{buffer2, static_cast<u_int32_t>(buffer2.size())};
-    this->objects.add_object(__object);*/
+    this->objects.add_object(__object);
 }
 
 
