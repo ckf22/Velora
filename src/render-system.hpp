@@ -3,6 +3,7 @@
 #include "object-manager.hpp"
 #include "camera.hpp"
 #include "device.hpp"
+#include "buffer.hpp"
 
 #include <memory>
 #include <chrono>
@@ -37,14 +38,13 @@ class RenderSystem{
     void bind(VkCommandBuffer& cmd_buffer, u_int32_t frame_index);
   private:
     void populate();
-    void create_buffers();
+    void create_vertex_buffers();
+    void create_ubo();
 
     u_int32_t frame_count;
     Device& device;
 
-    std::vector<VkBuffer> vertex_buffers;
-    std::vector<VkDeviceMemory> vertex_buffer_memory;
-    u_int32_t buffer_size;
+    std::vector<std::unique_ptr<MyBuffer>> vertex_buffers;
 
     float aspect_ratio;
     Camera camera{};

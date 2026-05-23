@@ -60,8 +60,8 @@ void Application::run(float fps){
             usleep(frame_time_micro_seconds / 10);
         }
 
-        if constexpr (debug)
-            std::cout << "Frame " << frame_count << std::endl;
+        //if constexpr (debug)
+        //    std::cout << "Frame " << frame_count << std::endl;
 
         t0 = std::chrono::high_resolution_clock::now();
     }
