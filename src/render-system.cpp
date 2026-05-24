@@ -10,7 +10,8 @@
 
 namespace velora{
 
-RenderSystem::RenderSystem(Device& _device, u_int32_t _frame_count, int width, int height) : device{_device}, frame_count{_frame_count} {
+RenderSystem::RenderSystem(Device& _device, MovementController& _movement_controller, u_int32_t _frame_count, int width, int height)
+ : device{_device}, frame_count{_frame_count}, movement_controller{_movement_controller} {
     this->populate();
     this->create_vertex_buffers();
 
@@ -18,7 +19,7 @@ RenderSystem::RenderSystem(Device& _device, u_int32_t _frame_count, int width, i
     //    VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT);
 
     //this->camera.orthographic_projection(-5, 15, 3, -3, -3, 3);
-    this->camera.view_direction({-2, -.5f, -10}, {.5f, 0.f, .9f}, {.0f, -1.f, .0f});
+    this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
     this->register_resize(width, height);
 }
 
@@ -31,12 +32,14 @@ void RenderSystem::register_resize(int width, int height){
 }
 
 void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is short for delta time
-    this->transform.rotation.y = glm::mod( this->transform.rotation.y + (.002f*(dt.count()/1024))  , glm::two_pi<float>());
-    this->transform.rotation.z = glm::mod( this->transform.rotation.z + (.0008f*(dt.count()/1024)) , glm::two_pi<float>());
-    this->transform.rotation.x = glm::mod( this->transform.rotation.x + (.0002f*(dt.count()/1024)) , glm::two_pi<float>());
+    //this->transform.rotation.y = glm::mod( this->transform.rotation.y + (.002f*(dt.count()/1024))  , glm::two_pi<float>());
+    //this->transform.rotation.z = glm::mod( this->transform.rotation.z + (.0008f*(dt.count()/1024)) , glm::two_pi<float>());
+    //this->transform.rotation.x = glm::mod( this->transform.rotation.x + (.0002f*(dt.count()/1024)) , glm::two_pi<float>());
 
-    this->dy += (  .003f * (dt.count()/1024)  );
-    this->transform.translation.x = glm::sin(this->dy)*3;
+    //this->dy += (  .003f * (dt.count()/1024)  );
+    //this->transform.translation.x = glm::sin(this->dy)*3;
+
+    this->movement_controller.apply_to_camera(camera);
 }
 
 void RenderSystem::upload_shader_data(u_int32_t frame_index){
@@ -75,6 +78,19 @@ void RenderSystem::populate(){
     auto buffer3 = Vertex::get_default_cube({1,2.1f,1});
     Object ___object{buffer3, static_cast<u_int32_t>(buffer3.size())};
     this->objects.add_object(___object);
+
+    // plane at the bottom
+    std::vector<Vertex> buffer4 = {
+        {{-10, 2, -10},{.1f,.9f,.9f}},
+        {{-10, 2, 10},{.9f,.9f,.1f}},
+        {{10, 2, -10},{.9f,.1f,.9f}},
+
+        {{10, 2, 10},{.1f,.9f,.9f}},
+        {{-10, 2, 10},{.9f,.9f,.1f}},
+        {{10, 2, -10},{.9f,.1f,.9f}},
+    };
+    Object ____object(buffer4, static_cast<u_int32_t>(buffer4.size()));
+    this->objects.add_object(____object);
 }
 
 

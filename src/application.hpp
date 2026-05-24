@@ -5,6 +5,7 @@
 #include "pipeline.hpp"
 #include "swapchain.hpp"
 #include "render-system.hpp"
+#include "movement-controller.hpp"
 
 #include <vector>
 
@@ -45,8 +46,8 @@ class Application{
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
     Pipeline pipeline{device, "./shaders/simple-3d-shader.vert.spv", "./shaders/simple-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
 
-    RenderSystem render_system{device, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
-
+    MovementController movement_controller{window};
+    RenderSystem render_system{device, movement_controller, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
 };
 
 }

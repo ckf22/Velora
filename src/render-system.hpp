@@ -1,6 +1,7 @@
 #pragma once
 
 #include "object-manager.hpp"
+#include "movement-controller.hpp"
 #include "camera.hpp"
 #include "device.hpp"
 #include "buffer.hpp"
@@ -22,7 +23,7 @@ class RenderSystem{
         glm::mat4 worldspace_transformation{1.f};
     };
 
-    RenderSystem(Device& _device, const u_int32_t _frame_count, int width, int height);
+    RenderSystem(Device& _device, MovementController& _movement_controller, const u_int32_t _frame_count, int width, int height);
     ~RenderSystem();
 
     RenderSystem& operator=(RenderSystem&) = delete;
@@ -49,9 +50,10 @@ class RenderSystem{
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
+    MovementController& movement_controller;
 
     // temp
-    TransformComponent transform{{0,0,8.f}, {2,2,2}, {.1f,.25f, .4f}, {0,0,.5f}};
+    TransformComponent transform{{0,0,0.f}, {2,2,2}, {.0f,.0f, .0f}, {0,0,.0f}};
     float dy = 0;
 };
 

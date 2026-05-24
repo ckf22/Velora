@@ -39,6 +39,9 @@ glm::mat4 Camera::perspective_projection(float near, float far, float theta, flo
 }
 
 glm::mat4 Camera::view_angles(glm::vec3 position, glm::vec3 rotation){
+  this->rotation = rotation;
+  this->position = position;
+
   const float c3 = glm::cos(rotation.z);
   const float s3 = glm::sin(rotation.z);
   const float c2 = glm::cos(rotation.x);
@@ -65,6 +68,7 @@ glm::mat4 Camera::view_angles(glm::vec3 position, glm::vec3 rotation){
   return this->view;
 }
 
+/*
 glm::mat4 Camera::view_direction(glm::vec3 position, glm::vec3 direction, glm::vec3 up){
   const glm::vec3 w{glm::normalize(direction)};
   const glm::vec3 u{glm::normalize(glm::cross(w, up))};
@@ -87,9 +91,11 @@ glm::mat4 Camera::view_direction(glm::vec3 position, glm::vec3 direction, glm::v
   return this->view;
 }
 
+
 glm::mat4 Camera::view_target(glm::vec3 position, glm::vec3 target, glm::vec3 up){
     return this->view_direction(position, target - position, up);  
 }
+*/
 
 glm::mat4 Camera::get_projection_view_matrix(){
     return this->projection * this->view;
