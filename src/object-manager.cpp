@@ -11,17 +11,32 @@ ObjectManager::ObjectManager(){
 ObjectManager::~ObjectManager(){
 }
 
-u_int32_t ObjectManager::upload_shader_data(void * dest, int max_bytes){
-    int running_sum = max_bytes;
+void ObjectManager::add_draw_calls(VkCommandBuffer& cmd_buffer){
+    int index_begin = 0, index_offset = 0;
     for(auto& it : this->objects){
-        if(running_sum - it.get_required_ram() < 0) break;
+        vkCmdDrawIndexed(cmd_buffer, it.get_index_count(), 1, index_begin, index_offset, 0);
+        index_offset += it.get_vertex_count();
+        index_begin += it.get_index_count();
+    }
+}
 
-        auto buffer = it.write_data(dest);
-        running_sum -= buffer;
-        dest += buffer;
+u_int32_t ObjectManager::upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes, int max_index_bytes){
+    int running_sum_vertex = max_vertex_bytes, running_sum_index = max_index_bytes;
+    for(auto& it : this->objects){
+        // Copying vertex data
+        if(running_sum_vertex - it.get_required_ram() < 0) break;
+        auto buffer = it.write_vertex_data(vertex_dest);
+        running_sum_vertex -= buffer;
+        vertex_dest += buffer;
+
+        // Copying indices
+        if(running_sum_index - (it.get_index_count() * sizeof(u_int32_t)) < 0) break;
+        buffer = it.write_index_data(index_dest);
+        running_sum_index -= buffer;
+        index_dest += buffer;
     }
 
-    return max_bytes - running_sum;
+    return max_vertex_bytes - running_sum_vertex + max_index_bytes - running_sum_index;
 }
 
 void ObjectManager::add_object(Object& _object){

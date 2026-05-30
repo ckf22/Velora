@@ -37,20 +37,19 @@ class RenderSystem{
 
     void update_shader_data(std::chrono::microseconds dt);
     void upload_shader_data(u_int32_t frame_index);
-    void fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index);
+    void fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index); // copy command has to be executed though a command buffer
     void fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, VkDescriptorSet& set, u_int32_t frame_index);
   private:
     void push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout);
-    void bind_buffer_objects(VkCommandBuffer& cmd_buffer, u_int32_t frame_index);
     void populate();
-    void create_vertex_buffers();
-    void create_ubo();
+    void create_buffer_objects();
 
     u_int32_t frame_count;
     Device& device;
+    MovementController& movement_controller;
 
     std::vector<std::unique_ptr<MyBuffer>> vertex_buffers;
-    //std::vector<std::unique_ptr<MyBuffer>> index_buffers;
+    std::vector<std::unique_ptr<MyBuffer>> index_buffers;
 
     std::vector<std::unique_ptr<MyBuffer>> ssbo;
     std::vector<std::unique_ptr<MyBuffer>> ssbo_staging;
@@ -58,7 +57,6 @@ class RenderSystem{
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
-    MovementController& movement_controller;
 
     // temp
     TransformComponent transform{{0,0,0.f}, {2,2,2}, {.0f,.0f, .0f}, {0,0,.0f}};

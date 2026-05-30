@@ -24,9 +24,9 @@ class ObjectManager{
     u_int32_t get_vertex_count(){ return vertex_count; }
     u_int32_t get_required_ram(){ return vertex_count * sizeof(Vertex); }
 
-
     void add_object(Object& _object);
-    u_int32_t upload_shader_data(void * dest, int max_bytes = -1);
+    u_int32_t upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes = -1, int max_index_bytes = -1);
+    void add_draw_calls(VkCommandBuffer& cmd_buffer);
   private:
     std::list<Object> objects;
     u_int32_t vertex_count = 0;

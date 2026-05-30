@@ -14,18 +14,7 @@ namespace velora{
 RenderSystem::RenderSystem(Device& _device, MovementController& _movement_controller, u_int32_t _frame_count, int width, int height)
  : device{_device}, frame_count{_frame_count}, movement_controller{_movement_controller} {
     this->populate();
-    this->create_vertex_buffers();
-
-
-    int i = 0;
-    for(int i = 0; i < _frame_count; ++i){
-        this->ssbo.push_back( std::make_unique<MyBuffer>(_device, 1000, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT ) );
-        this->ssbo_staging.push_back( std::make_unique<MyBuffer>(_device, this->ssbo[i]->get_size(), 1,
-         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-        ) );
-    }
+    this->create_buffer_objects();
 
     this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
     this->register_resize(width, height);
@@ -37,14 +26,14 @@ RenderSystem::~RenderSystem(){
 void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
     TransformComponent t({0,0,0},{1,2,1});
     auto dest = this->ssbo_staging[frame_index]->map();
-    glm::mat4 data = t.get_transform();
-    memcpy(dest, &data, sizeof(glm::mat4));
+    std::vector<glm::mat4> data{t.get_transform(), t.get_transform(), t.get_transform()};
+    memcpy(dest, data.data(), sizeof(glm::mat4)*data.size());
     this->ssbo_staging[frame_index]->unmap();
 
     VkBufferCopy copy{
         .srcOffset = 0,
         .dstOffset = 0,
-        .size = 1000
+        .size = this->ssbo_staging[frame_index]->get_size()
     };
     vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging[frame_index]->get_buffer(), this->ssbo[frame_index]->get_buffer(), 1, &copy);
 }
@@ -52,16 +41,17 @@ void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index)
 void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, VkDescriptorSet& set, u_int32_t frame_index){
     this->upload_shader_data(frame_index);
 
-    this->bind_buffer_objects(cmd_buffer, frame_index);
+    VkDeviceSize offset{0};
+    vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
+    vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[frame_index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
 
-    u_int32_t o = 0;
+    u_int32_t offsets = 0;
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &set, 1, &o);
+        0, 1, &set, 1, &offsets);
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
-    // the actual magic
-    vkCmdDraw(cmd_buffer, this->get_vertex_count(), 1, 0, 0);
+    this->objects.add_draw_calls(cmd_buffer);
 
 }
 
@@ -80,9 +70,7 @@ void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is sh
 }
 
 void RenderSystem::upload_shader_data(u_int32_t frame_index){
-    auto dest = this->vertex_buffers[frame_index]->map();
-    this->vertex_buffers[frame_index]->map();
-    auto a = this->objects.upload_shader_data(dest, this->vertex_buffers[frame_index]->get_size());
+    auto a = this->objects.upload_shader_data(this->vertex_buffers[frame_index]->map(), this->index_buffers[frame_index]->map(), this->vertex_buffers[frame_index]->get_size());
 
     //if constexpr (debug)
     //    std::cout << "Copied " << a << " Bytes" << std::endl;
@@ -97,24 +85,16 @@ void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineL
          0, sizeof(PushConstantRange), &push);
 }
 
-void RenderSystem::bind_buffer_objects(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
-    VkDeviceSize offsets{0};
-    vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offsets);
-}
-
 void RenderSystem::populate(){
-    auto buffer = Vertex::get_default_cube();
-    Object _object{buffer, static_cast<u_int32_t>(buffer.size())};
-    this->objects.add_object(_object);
 
-    auto buffer2 = Vertex::get_default_cube({1,1,1});
-    Object __object{buffer2, static_cast<u_int32_t>(buffer2.size())};
-    this->objects.add_object(__object);
+    auto buffer1 = Object::get_default_cube({0,0,0});
+    this->objects.add_object(buffer1);
 
-    auto buffer3 = Vertex::get_default_cube({1,2.1f,1});
-    Object ___object{buffer3, static_cast<u_int32_t>(buffer3.size())};
-    this->objects.add_object(___object);
+    auto buffer2 = Object::get_default_cube({1,1,1});
+    this->objects.add_object(buffer2);
 
+    auto buffer3 = Object::get_default_cube({1,2.1f,1});
+    this->objects.add_object(buffer3);
     // plane at the bottom
     std::vector<Vertex> buffer4 = {
         {{-10, 2, -10},{.1f,.9f,.9f}},
@@ -125,21 +105,46 @@ void RenderSystem::populate(){
         {{-10, 2, 10},{.9f,.9f,.1f}},
         {{10, 2, -10},{.9f,.1f,.9f}},
     };
-    Object ____object(buffer4, static_cast<u_int32_t>(buffer4.size()));
-    this->objects.add_object(____object);
+    std::vector<u_int32_t> indices = {0,1,2,3,4,5};
+    Object object4(buffer4, indices, static_cast<u_int32_t>(buffer4.size()), static_cast<u_int32_t>(indices.size()));
+    this->objects.add_object(object4);
 }
 
 
-void RenderSystem::create_vertex_buffers(){
+void RenderSystem::create_buffer_objects(){
 
     this->vertex_buffers.clear();
     u_int32_t buffer_size = sizeof(Vertex);
     u_int32_t count = 2000; // abitrarily high number so the data will fit
 
     for(int i = 0; i < this->frame_count; ++i){
-        this->vertex_buffers.push_back( std::make_unique<MyBuffer>(this->device, buffer_size, count,
-         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT ) );
+        this->vertex_buffers.push_back( 
+            std::make_unique<MyBuffer>(
+                this->device, buffer_size, count,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT 
+            )
+        );
+        this->index_buffers.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, sizeof(u_int32_t), 2000,
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+            )
+        );
+        this->ssbo.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, 1000, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            )
+        );
+        this->ssbo_staging.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, this->ssbo[i]->get_size(), 1,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+            ) 
+        );
     }
 
     if constexpr (debug)

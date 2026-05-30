@@ -13,89 +13,34 @@
 namespace velora{
 
 struct Vertex{
-    //glm::mat4 object_transform{1.f};
     glm::vec3 position{0.f};
     glm::vec3 color{.1f};
 
-
     static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
     static std::vector<VkVertexInputBindingDescription> get_binding_descriptions();
-
-    static std::vector<Vertex> get_default_cube(glm::vec3 offset = {0,0,0}){
-        std::vector<Vertex> buffer = {
-            // left face (white)
-            {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-            {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-            {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
-            {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-            {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
-            {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-
-            // right face (yellow)
-            {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-            {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-            {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
-            {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-            {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
-            {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-
-            // top face (orange, remember y axis points down)
-            {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-            {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-            {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-            {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-            {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-            {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-
-            // bottom face (red)
-            {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-            {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-            {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
-            {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-            {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-            {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-
-            // nose face (blue)
-            {{-.5f, -.5f, 0.5f}, {.1f, .1f, .9f}},
-            {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
-            {{-.5f, .5f, 0.5f}, {.1f, .1f, .7f}},
-            {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
-            {{.5f, -.5f, 0.5f}, {.1f, .1f, .6f}},
-            {{.5f, .5f, 0.5f}, {.1f, .1f, 1.f}},
-
-            // tail face (green)
-            {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-            {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-            {{-.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-            {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-            {{.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-            {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}}
-        };
-
-        //glm::vec3 offset{0.f,0.f,.5f};
-        //glm::vec3 scale{.5f, .5f, .5f};
-
-        for(auto& it : buffer)
-            it.position = it.position + offset;
-        return buffer;
-    };
 };
 
 class Object{
   public:
-    Object(std::vector<Vertex> data, const u_int32_t _max_indices);
+    static Object get_default_cube(glm::vec3 offset = {0,0,0});
+
+    Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, const u_int32_t _max_vertices, const u_int32_t _max_indices);
 
     //glm::mat4 get_transform();
-    u_int32_t write_data(void * destination);
+    u_int32_t write_vertex_data(void * destination);
+    u_int32_t write_index_data(void * destination);
 
-    const u_int32_t get_max_vertex_count() const { return this->max_indices; }
+    const u_int32_t get_max_vertex_count() const { return this->max_vertices; }
+    const u_int32_t get_max_index_count() const { return this->max_indices; }
+    u_int32_t get_index_count() { return this->indices.size(); }
     u_int32_t get_vertex_count() { return this->vertices.size(); }
     u_int32_t get_required_ram() { return this->vertices.size() * sizeof(Vertex); }
     std::vector<Vertex>& get_vertices() { return this->vertices; }
   private:
     std::vector<Vertex> vertices;
-    //std::vector<u_int32_t> indices;
+    std::vector<u_int32_t> indices;
 
+    const u_int32_t max_vertices;
     const u_int32_t max_indices;
 
     //TransformComponent transform;

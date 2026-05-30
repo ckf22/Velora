@@ -8,16 +8,62 @@
 
 namespace velora{
 
-Object::Object(std::vector<Vertex> data, const u_int32_t _max_indices) : max_indices{_max_indices} {
-    this->vertices = std::move(data);
+Object Object::get_default_cube(glm::vec3 offset){
+    // left face (white)
+    std::vector<Vertex> vertices{
+        {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
+        {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
+        {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
+        {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
+        // right face (yellow)
+        {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
+        {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
+        {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
+        {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
+        // top face (orange, remember y axis points down)
+        {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+        {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+        {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
+        {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
+        // bottom face (red)
+        {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+        {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
+        {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
+        {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
+        // nose face (blue)
+        {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+        {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+        {{-.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
+        {{.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
+        // tail face (green)
+        {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+        {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+        {{-.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
+        {{.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
+    };
+
+    for(auto& it : vertices)
+        it.position += offset;
+
+    std::vector<u_int32_t> indices = {0,  1,  2,  0,  3,  1,  4,  5,  6,  4,  7,  5,  8,  9,  10, 8,  11, 9,
+                          12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 21};
+
+    return Object(vertices, indices, vertices.size(), indices.size());
 }
 
-/*glm::mat4 Object::get_transform(){
-    return glm::mat4{1.f};
-}*/
-u_int32_t Object::write_data(void * destination){
+Object::Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, const u_int32_t _max_vertices, const u_int32_t _max_indices)
+ : max_indices{_max_indices}, max_vertices{_max_vertices}, vertices{_vertices}, indices{_indices} {
+}
+
+u_int32_t Object::write_vertex_data(void * destination){
     u_int32_t bytes = sizeof(Vertex)*this->vertices.size();
     memcpy(destination, this->vertices.data(), bytes);
+    return bytes;
+}
+
+u_int32_t Object::write_index_data(void * destination){
+    u_int32_t bytes = sizeof(u_int32_t)*this->indices.size();
+    mempcpy(destination, this->indices.data(), bytes);
     return bytes;
 }
 
