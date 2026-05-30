@@ -24,10 +24,8 @@ RenderSystem::~RenderSystem(){
 }
 
 void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
-    TransformComponent t({0,0,0},{1,2,1});
     auto dest = this->ssbo_staging[frame_index]->map();
-    std::vector<glm::mat4> data{t.get_transform(), t.get_transform(), t.get_transform()};
-    memcpy(dest, data.data(), sizeof(glm::mat4)*data.size());
+    this->objects.upload_transforms(dest);
     this->ssbo_staging[frame_index]->unmap();
 
     VkBufferCopy copy{
@@ -70,7 +68,8 @@ void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is sh
 }
 
 void RenderSystem::upload_shader_data(u_int32_t frame_index){
-    auto a = this->objects.upload_shader_data(this->vertex_buffers[frame_index]->map(), this->index_buffers[frame_index]->map(), this->vertex_buffers[frame_index]->get_size());
+    auto a = this->objects.upload_shader_data( this->vertex_buffers[frame_index]->map(), this->index_buffers[frame_index]->map(),
+     this->vertex_buffers[frame_index]->get_size(), this->index_buffers[frame_index]->get_size());
 
     //if constexpr (debug)
     //    std::cout << "Copied " << a << " Bytes" << std::endl;
@@ -88,26 +87,37 @@ void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineL
 void RenderSystem::populate(){
 
     auto buffer1 = Object::get_default_cube({0,0,0});
+
+    std::vector<TransformComponent> transforms(1000);
+    for(int x = 0; x < 10; ++x){
+        for(int y = 0; y < 10; ++y){
+            for(int z = 0; z < 10; ++z){
+                transforms[(x*100)+(y*10)+z] = TransformComponent({x*2,-y*2,z*2});
+            }
+        }
+    }
+    buffer1.get_transforms() = transforms;
+
     this->objects.add_object(buffer1);
 
+    /*
     auto buffer2 = Object::get_default_cube({1,1,1});
     this->objects.add_object(buffer2);
 
     auto buffer3 = Object::get_default_cube({1,2.1f,1});
     this->objects.add_object(buffer3);
+    */
     // plane at the bottom
     std::vector<Vertex> buffer4 = {
-        {{-10, 2, -10},{.1f,.9f,.9f}},
-        {{-10, 2, 10},{.9f,.9f,.1f}},
-        {{10, 2, -10},{.9f,.1f,.9f}},
-
-        {{10, 2, 10},{.1f,.9f,.9f}},
-        {{-10, 2, 10},{.9f,.9f,.1f}},
-        {{10, 2, -10},{.9f,.1f,.9f}},
+        {{-10, 0, -10},{.1f,.9f,.9f}},
+        {{-10, 0, 10},{.9f,.9f,.1f}},
+        {{10, 0, -10},{.9f,.1f,.9f}},
+        {{10, 0, 10},{.1f,.9f,.9f}}
     };
-    std::vector<u_int32_t> indices = {0,1,2,3,4,5};
+    std::vector<u_int32_t> indices = {0,1,2,1,2,3};
     Object object4(buffer4, indices, static_cast<u_int32_t>(buffer4.size()), static_cast<u_int32_t>(indices.size()));
     this->objects.add_object(object4);
+    
 }
 
 
@@ -134,7 +144,7 @@ void RenderSystem::create_buffer_objects(){
         );
         this->ssbo.push_back(
             std::make_unique<MyBuffer>(
-                this->device, 1000, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                this->device, sizeof(glm::mat4), 2000, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
             )
         );

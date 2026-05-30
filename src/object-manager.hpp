@@ -26,6 +26,7 @@ class ObjectManager{
 
     void add_object(Object& _object);
     u_int32_t upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes = -1, int max_index_bytes = -1);
+    u_int32_t upload_transforms(void * dest, u_int32_t max_bytes = -1);
     void add_draw_calls(VkCommandBuffer& cmd_buffer);
   private:
     std::list<Object> objects;

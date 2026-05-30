@@ -8,6 +8,37 @@
 
 namespace velora{
 
+Object::Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, const u_int32_t _max_vertices, const u_int32_t _max_indices)
+ : max_indices{_max_indices}, max_vertices{_max_vertices}, vertices{_vertices}, indices{_indices} {
+    this->transforms.push_back( TransformComponent() );
+ }
+
+Object::Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, std::vector<TransformComponent> _transforms, const u_int32_t _max_vertices, const u_int32_t _max_indices)
+ : max_indices{_max_indices}, max_vertices{_max_vertices}, vertices{_vertices}, indices{_indices}, transforms{_transforms} {}
+
+u_int32_t Object::write_vertex_data(void * destination){
+    u_int32_t bytes = sizeof(Vertex)*this->vertices.size();
+    memcpy(destination, this->vertices.data(), bytes);
+    return bytes;
+}
+
+u_int32_t Object::write_index_data(void * destination){
+    u_int32_t bytes = sizeof(u_int32_t)*this->indices.size();
+    mempcpy(destination, this->indices.data(), bytes);
+    return bytes;
+}
+
+u_int32_t Object::write_transform_data(void * destination){
+    glm::mat4 buffer;
+    for(auto& it : this->transforms){
+        buffer = it.get_transform();
+        memcpy(destination, &buffer, sizeof(glm::mat4));
+        destination += sizeof(glm::mat4);
+    }
+    return sizeof(glm::mat4) * this->transforms.size();
+}
+
+
 Object Object::get_default_cube(glm::vec3 offset){
     // left face (white)
     std::vector<Vertex> vertices{
@@ -49,22 +80,6 @@ Object Object::get_default_cube(glm::vec3 offset){
                           12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 21};
 
     return Object(vertices, indices, vertices.size(), indices.size());
-}
-
-Object::Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, const u_int32_t _max_vertices, const u_int32_t _max_indices)
- : max_indices{_max_indices}, max_vertices{_max_vertices}, vertices{_vertices}, indices{_indices} {
-}
-
-u_int32_t Object::write_vertex_data(void * destination){
-    u_int32_t bytes = sizeof(Vertex)*this->vertices.size();
-    memcpy(destination, this->vertices.data(), bytes);
-    return bytes;
-}
-
-u_int32_t Object::write_index_data(void * destination){
-    u_int32_t bytes = sizeof(u_int32_t)*this->indices.size();
-    mempcpy(destination, this->indices.data(), bytes);
-    return bytes;
 }
 
 
