@@ -20,7 +20,7 @@ class Pipeline{
     };
 
   public:
-    Pipeline(Device& _device, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
+    Pipeline(Device& _device, std::vector<VkDescriptorSetLayout> descriptors, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
     ~Pipeline();
 
     void operator=(const Pipeline&) = delete;
@@ -30,8 +30,8 @@ class Pipeline{
 
     void bind_cmd_buffer(VkCommandBuffer& cmd_buffer);
   private:
-    void create_pipeline(std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
-    void create_pipeline_layout();
+    void create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
+    void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors);
     void create_shader_module(VkShaderModule * target_module ,std::string filepath);
 
     static std::vector<char> read_file(std::string filename);

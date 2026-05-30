@@ -12,6 +12,8 @@ Application::Application(){
     this->create_command_buffers(this->device.get_queue_family());
     this->create_semaphores();
 
+    this->render_system.add_ssbo_descriptor_set(this->descriptor_pool);
+
     if constexpr (debug)
         std::cout << "\n---------------\nSetup completed\n---------------\n" << std::endl;
 }
@@ -231,6 +233,8 @@ void Application::record_command_buffers(){
         .pDepthAttachment = &depth_attachment
     };
 
+    this->render_system.fill_ssbo(cmd_buffer, index);
+
     vkCmdBeginRendering(cmd_buffer, &render_info);
 
     VkViewport viewport{
@@ -247,14 +251,7 @@ void Application::record_command_buffers(){
 
     this->pipeline.bind_cmd_buffer(cmd_buffer);
 
-    this->render_system.upload_shader_data(index);
-
-    this->render_system.bind(cmd_buffer, index);
-
-    this->render_system.push_constant_ranges(cmd_buffer, this->pipeline.get_pipeline_layout());
-
-    // the actual magic
-    vkCmdDraw(cmd_buffer, this->render_system.get_vertex_count(), 1, 0, 0);
+    this->render_system.fill_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), this->descriptor_pool.get_set(), index);
 
     vkCmdEndRendering(cmd_buffer);
 

@@ -9,8 +9,8 @@
 
 namespace velora{
 
-Pipeline::Pipeline(Device& _device, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format) : device{_device} {
-    this->create_pipeline(vertex_filepath, fragment_filepath, _extent, _image_format, _depth_format);
+Pipeline::Pipeline(Device& _device, std::vector<VkDescriptorSetLayout> descriptors, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format) : device{_device} {
+    this->create_pipeline(vertex_filepath, fragment_filepath, descriptors, _extent, _image_format, _depth_format);
 }
 
 Pipeline::~Pipeline(){
@@ -25,7 +25,7 @@ void Pipeline::bind_cmd_buffer(VkCommandBuffer& cmd_buffer){
     vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
 }
 
-void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format){
+void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format){
     this->create_shader_module(&this->vertex_shader, vertex_filepath);
     this->create_shader_module(&this->fragment_shader, fragment_filepath);
 
@@ -61,9 +61,7 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
     VkPipelineViewportStateCreateInfo viewport_state_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
-        //.pViewports = &config_info.viewport,
         .scissorCount = 1,
-        //.pScissors = &config_info.scissor,
     };
 
     std::vector<VkDynamicState> dynamic_states{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
@@ -74,7 +72,7 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
     };
 
 
-    this->create_pipeline_layout();
+    this->create_pipeline_layout(descriptors);
 
     VkGraphicsPipelineCreateInfo pipeline_ci{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -88,7 +86,7 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
         .pMultisampleState = &config_info.multisample,
         .pDepthStencilState = &config_info.depth_stencil,
         .pColorBlendState = &config_info.color_blend,
-        .layout = this->pipeline_layout,
+        .layout = this->pipeline_layout,    
     };
     pipeline_ci.pDynamicState = &dynamic_state_ci;
 
@@ -99,7 +97,7 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
         std::cout << "Graphics Pipeline Created" << std::endl;
 }
 
-void Pipeline::create_pipeline_layout(){
+void Pipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors){
     VkPushConstantRange push{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
@@ -108,6 +106,8 @@ void Pipeline::create_pipeline_layout(){
 
     VkPipelineLayoutCreateInfo layout_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = static_cast<u_int32_t>(descriptors.size()),
+        .pSetLayouts = descriptors.data(),
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push,
     };

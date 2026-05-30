@@ -7,6 +7,7 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <string.h>
 
 namespace velora{
 
@@ -15,15 +16,58 @@ RenderSystem::RenderSystem(Device& _device, MovementController& _movement_contro
     this->populate();
     this->create_vertex_buffers();
 
-    //    this->test = std::make_unique<MyBuffer>(_device, 1024, 65536, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    //    VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT);
 
-    //this->camera.orthographic_projection(-5, 15, 3, -3, -3, 3);
+    int i = 0;
+    for(int i = 0; i < _frame_count; ++i){
+        this->ssbo.push_back( std::make_unique<MyBuffer>(_device, 1000, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT ) );
+        this->ssbo_staging.push_back( std::make_unique<MyBuffer>(_device, this->ssbo[i]->get_size(), 1,
+         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+        ) );
+    }
+
     this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
     this->register_resize(width, height);
 }
 
 RenderSystem::~RenderSystem(){
+}
+
+void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
+    TransformComponent t({0,0,0},{1,2,1});
+    auto dest = this->ssbo_staging[frame_index]->map();
+    glm::mat4 data = t.get_transform();
+    memcpy(dest, &data, sizeof(glm::mat4));
+    this->ssbo_staging[frame_index]->unmap();
+
+    VkBufferCopy copy{
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = 1000
+    };
+    vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging[frame_index]->get_buffer(), this->ssbo[frame_index]->get_buffer(), 1, &copy);
+}
+
+void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, VkDescriptorSet& set, u_int32_t frame_index){
+    this->upload_shader_data(frame_index);
+
+    this->bind_buffer_objects(cmd_buffer, frame_index);
+
+    u_int32_t o = 0;
+    vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+        0, 1, &set, 1, &o);
+
+    this->push_constant_ranges(cmd_buffer, pipeline_layout);
+
+    // the actual magic
+    vkCmdDraw(cmd_buffer, this->get_vertex_count(), 1, 0, 0);
+
+}
+
+void RenderSystem::add_ssbo_descriptor_set(DescriptorPool& pool){
+    for(auto& it : this->ssbo)
+        pool.add_b(*it);
 }
 
 void RenderSystem::register_resize(int width, int height){
@@ -32,13 +76,6 @@ void RenderSystem::register_resize(int width, int height){
 }
 
 void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is short for delta time
-    //this->transform.rotation.y = glm::mod( this->transform.rotation.y + (.002f*(dt.count()/1024))  , glm::two_pi<float>());
-    //this->transform.rotation.z = glm::mod( this->transform.rotation.z + (.0008f*(dt.count()/1024)) , glm::two_pi<float>());
-    //this->transform.rotation.x = glm::mod( this->transform.rotation.x + (.0002f*(dt.count()/1024)) , glm::two_pi<float>());
-
-    //this->dy += (  .003f * (dt.count()/1024)  );
-    //this->transform.translation.x = glm::sin(this->dy)*3;
-
     this->movement_controller.apply_to_camera(camera);
 }
 
@@ -46,7 +83,6 @@ void RenderSystem::upload_shader_data(u_int32_t frame_index){
     auto dest = this->vertex_buffers[frame_index]->map();
     this->vertex_buffers[frame_index]->map();
     auto a = this->objects.upload_shader_data(dest, this->vertex_buffers[frame_index]->get_size());
-    //this->vertex_buffers[frame_index]->unmap();
 
     //if constexpr (debug)
     //    std::cout << "Copied " << a << " Bytes" << std::endl;
@@ -61,7 +97,7 @@ void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineL
          0, sizeof(PushConstantRange), &push);
 }
 
-void RenderSystem::bind(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
+void RenderSystem::bind_buffer_objects(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
     VkDeviceSize offsets{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offsets);
 }

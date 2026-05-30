@@ -7,10 +7,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include <thread>
-#include <mutex>
-#include <shared_mutex>
-#include <list>
+#include <vector>
 
 
 namespace velora{
@@ -21,15 +18,15 @@ class MovementController{
         KeyAddress address;
         float * value_ptr;
     };
-struct InputData{
-    // 'd' stands for delta/difference; 'n' and 'p' for negative and positive respectively
-    glm::vec3 position_dp{.0f}, position_dn{.0f};
-    glm::vec2 rotation_dp{.0f}, rotation_dn{.0f};
-};
-struct OutputData{
-    glm::vec3 position;
-    glm::vec3 rotation;
-};
+    struct InputData{
+        // 'd' stands for delta/difference; 'n' and 'p' for negative and positive respectively
+        glm::vec3 position_dp{.0f}, position_dn{.0f};
+        glm::vec2 rotation_dp{.0f}, rotation_dn{.0f};
+    };
+    struct OutputData{
+        glm::vec3 position{.0f};
+        glm::vec3 rotation{.0f};
+    };
 
   public:
     MovementController(Window& _window);
@@ -39,16 +36,14 @@ struct OutputData{
 
     void apply_to_camera(Camera& camera);
   private:
-    static void execute(std::shared_mutex&, std::list<KeyMapping>&); // used for the thread
     void read_keys();
+    // relative controlls mean that the input(e.g. forward) is applied in the perspective of the camera instead
+    OutputData refine_input(InputData& input, Camera& reference, float vertical_tilt_clamp = glm::radians(85.f), std::vector<bool> relative_controls = {true, false, true});
 
     Window& window;
 
     InputData data;
-    std::list<KeyMapping> key_mappings;
-
-    std::shared_mutex mutex;
-    std::thread thread;
+    std::vector<KeyMapping> key_mappings;
 };
 
 } // namespace velora

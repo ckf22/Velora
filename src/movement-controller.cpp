@@ -25,6 +25,7 @@ MovementController::MovementController(Window& _window) : window{_window} {
 }
 
 void MovementController::read_keys(){
+    glfwPollEvents();
     for(auto& it : this->key_mappings){
         if( glfwGetKey(&this->window.get_window(), it.address) == GLFW_PRESS)
             *it.value_ptr += 1.f;
@@ -35,15 +36,28 @@ void MovementController::apply_to_camera(Camera& camera){
     this->data = InputData{};
     this->read_keys();
 
-    glm::vec3 movement = (this->data.position_dp-this->data.position_dn) * glm::vec3{.08f};
-    glm::vec2 turning = ( this->data.rotation_dp-this->data.rotation_dn ) * glm::vec2{.01f};
-    turning.y = glm::mod(turning.y + camera.rotation.y, glm::two_pi<float>());
-    turning.x = glm::clamp(turning.x + camera.rotation.x, glm::radians(-85.f), glm::radians(85.f)); // limiting up/down camera pitch to 85 degrees
-
-    camera.view_angles(  camera.position + movement,  glm::vec3{turning, .0f} );
+    auto new_camera_data = this->refine_input(this->data, camera);
+    camera.view_angles( new_camera_data.position, new_camera_data.rotation );
 }
 
-void MovementController::execute(std::shared_mutex&, std::list<KeyMapping>&){}
+MovementController::OutputData MovementController::refine_input(InputData& input, Camera& reference, float vertical_tilt_clamp, std::vector<bool> relative_controls){
+    glm::vec2 turning = ( this->data.rotation_dp-this->data.rotation_dn ) * glm::vec2{.01f};
+    turning.y = glm::mod(turning.y + reference.rotation.y, glm::two_pi<float>());
+    turning.x = glm::clamp(turning.x + reference.rotation.x, -vertical_tilt_clamp, vertical_tilt_clamp);
 
+    glm::vec3 movement = (this->data.position_dp-this->data.position_dn) * glm::vec3{.08f};
+
+    glm::mat4 rotate{1.f};
+    rotate = glm::rotate(rotate, turning.x, {1,0,0});
+    rotate = glm::rotate(rotate, turning.y, {0,1,0});
+
+    movement = glm::vec3{ rotate * glm::vec4{movement, 1} };
+
+    OutputData ret{
+        reference.position + movement,
+        glm::vec3{turning, .0f}
+    };
+    return ret;
+}
 
 }

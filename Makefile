@@ -13,7 +13,7 @@ DEPS := $(OBJS:.o=.d)
 
 INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-LIBS := /usr/lib/x86_64-linux-gnu/libglfw.so* /usr/lib/x86_64-linux-gnu/libvulkan*
+LIBS := -L /usr/lib/x86_64-linux-gnu/libglfw.so* /usr/lib/x86_64-linux-gnu/libvulkan*
 
 CPPFLAGS := $(INC_FLAGS) -MMD -MP
 
@@ -31,7 +31,7 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(VERT_OBJS) $(FRAG_OBJS)
 
 # linking
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS) 
-	$(CXX) $(OBJS) -o $@ $(LDFLAGS) -L $(LIBS)
+	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 # c++ compiling
 $(BUILD_DIR)/%.cpp.o: %.cpp
@@ -52,7 +52,7 @@ touch:
 	touch $(VERT_SRCS) $(FRAG_SRCS)
 
 app:
-	$(CXX) $(INC_FLAGS) $(CXXFLAGS) $(SRCS) -O3 -o app -L $(LIBS)
+	$(CXX) $(INC_FLAGS) $(CXXFLAGS) $(SRCS) -O3 -o app $(LIBS)
 
 
 

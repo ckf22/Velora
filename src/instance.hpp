@@ -33,7 +33,7 @@ class Instance{
     static constexpr bool debug = false;
     #endif
 
-    std::vector<const char*> required_extensions;
+    std::vector<const char*> required_extensions = {};
     VkInstance instance;
 };
 

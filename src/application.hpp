@@ -4,6 +4,7 @@
 #include "device.hpp"
 #include "pipeline.hpp"
 #include "swapchain.hpp"
+#include "descriptors.hpp"
 #include "render-system.hpp"
 #include "movement-controller.hpp"
 
@@ -43,8 +44,9 @@ class Application{
 
     Window window{"Vulkan Window", WIDTH, HEIGHT};
     Device device{window.get_window()};
+    DescriptorPool descriptor_pool{device, 2};
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
-    Pipeline pipeline{device, "./shaders/simple-3d-shader.vert.spv", "./shaders/simple-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
+    Pipeline pipeline{device, {descriptor_pool.get_layout()}, "./shaders/ssbo-3d-shader.vert.spv", "./shaders/simple-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
 
     MovementController movement_controller{window};
     RenderSystem render_system{device, movement_controller, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
