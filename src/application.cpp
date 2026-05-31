@@ -12,7 +12,9 @@ Application::Application(){
     this->create_command_buffers(this->device.get_queue_family());
     this->create_semaphores();
 
-    this->render_system.add_ssbo_descriptor_set(this->descriptor_pool);
+    this->descriptor_manager.create_ressources();
+
+    this->render_system.allocate_from_descriptor_set();
 
     if constexpr (debug)
         std::cout << "\n---------------\nSetup completed\n---------------\n" << std::endl;
@@ -251,7 +253,7 @@ void Application::record_command_buffers(){
 
     this->pipeline.bind_cmd_buffer(cmd_buffer);
 
-    this->render_system.fill_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), this->descriptor_pool.get_set(), index);
+    this->render_system.fill_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
 
     vkCmdEndRendering(cmd_buffer);
 

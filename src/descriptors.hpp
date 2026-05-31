@@ -8,7 +8,6 @@
 
 namespace velora{
 
-class DescriptorSet;
 class DescriptorManager;
 
 class DescriptorPool{
@@ -17,7 +16,6 @@ class DescriptorPool{
     #else
     static constexpr bool debug = false;
     #endif
-    friend class DescriptorSet;
     friend class DescriptorManager;
   public:
     DescriptorPool(Device& _device, u_int32_t _max_sets);
@@ -44,44 +42,56 @@ class DescriptorPool{
     VkDescriptorSet set;
 };
 
-class DescriptorSet{
+
+class DescriptorManager{
     #ifdef DEBUG
     static constexpr bool debug = true;
     #else
     static constexpr bool debug = false;
     #endif
-    friend class DescriptorPool;
-    friend class DescriptorManager;
+    struct DescriptorSetCreateData{
+      int layout_id;
+      u_int32_t count;
+    };
   public:
-    DescriptorSet(Device& _device, DescriptorPool& _pool);
-    ~DescriptorSet();
+    struct DescriptorSetData{
+      VkDescriptorSet set;
+      VkDescriptorSetAllocateInfo alloc_info;
+    };
+    struct DescriptorSetLayoutData{
+      VkDescriptorSetLayout layout;
+      VkDescriptorSetLayoutCreateInfo ci;
+    };
 
-    DescriptorSet(const DescriptorSet&) = delete;
-    DescriptorSet& operator=(const DescriptorSet&) = delete;
-
-    const VkDescriptorSetLayout& get_layout() const { return this->layout; }
-    const VkDescriptorSet& get_set() const { return this->set; }
-  private:
-    Device& device;
-    DescriptorPool& pool;
-
-    VkDescriptorSetLayout layout;
-    VkDescriptorSet set;
-};
-
-class DescriptorManager{
-  public:
     DescriptorManager(Device& _device);
     ~DescriptorManager();
 
-    void add_descriptor_set();
+    DescriptorManager& operator=(const DescriptorManager&) = delete;
+    DescriptorManager(DescriptorManager&) = delete;
 
+    DescriptorPool& get_pool(){ return *this->pool; }
+    VkDescriptorSet& get_set(int id){ return this->sets[id].set; }
+    VkDescriptorSetLayout& get_layout(int id) { return this->layouts[id].layout; }
+    std::vector<VkDescriptorSetLayout> get_layout_vector();
+
+    void allocate_buffer_descriptor(int target_set, MyBuffer& buffer, u_int32_t shader_binding, u_int32_t buffer_offset = 0);
+
+    // used for constructing
     void create_ressources();
+    int add_layout(std::vector<VkDescriptorSetLayoutBinding> binding_infos, VkDescriptorSetLayoutCreateFlags flags = 0);
+    int add_descriptor_set(int layout_id, u_int32_t set_count); // returns index of descriptor set
+    void add_descriptor(VkDescriptorType descriptor_type, u_int32_t descriptor_count);
   private:
     Device& device;
+    bool ressources_created_flag = false;
 
     std::unique_ptr<DescriptorPool> pool;
-    std::vector<std::unique_ptr<DescriptorSet>> sets;
+    std::vector<DescriptorSetData> sets;
+    std::vector<DescriptorSetLayoutData> layouts;
+
+    // used for constructing
+    std::vector<VkDescriptorPoolSize> pool_sizes;
+    std::vector<DescriptorSetCreateData> set_create_data;
 };
 
 }

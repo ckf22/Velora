@@ -42,14 +42,18 @@ class Application{
     VkCommandPool command_pool{};
     std::vector<VkCommandBuffer> command_buffers;
 
-    Window window{"Vulkan Window", WIDTH, HEIGHT};
-    Device device{window.get_window()};
-    DescriptorPool descriptor_pool{device, 2};
-    SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
-    Pipeline pipeline{device, {descriptor_pool.get_layout()}, "./shaders/ssbo-3d-shader.vert.spv", "./shaders/simple-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
 
+    Window window{"Vulkan Window", WIDTH, HEIGHT};
     MovementController movement_controller{window};
-    RenderSystem render_system{device, movement_controller, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
+
+    Device device{window.get_window()};
+
+    DescriptorManager descriptor_manager{device};
+    SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
+    RenderSystem render_system{device, movement_controller, descriptor_manager, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
+
+    Pipeline pipeline{device, {descriptor_manager.get_layout_vector()}, "./shaders/ssbo-3d-shader.vert.spv", "./shaders/ssbo-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
+
 };
 
 }

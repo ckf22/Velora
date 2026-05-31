@@ -11,10 +11,20 @@
 
 namespace velora{
 
-RenderSystem::RenderSystem(Device& _device, MovementController& _movement_controller, u_int32_t _frame_count, int width, int height)
- : device{_device}, frame_count{_frame_count}, movement_controller{_movement_controller} {
+RenderSystem::RenderSystem(Device& _device, MovementController& _movement_controller, DescriptorManager& _descriptor_manager, const u_int32_t _frame_count, int width, int height)
+ : device{_device}, frame_count{_frame_count}, movement_controller{_movement_controller}, descriptor_manager{_descriptor_manager} {
     this->populate();
     this->create_buffer_objects();
+
+    this->layout_id = _descriptor_manager.add_layout({VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+    }});
+
+    _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, _frame_count);
+    this->first_descriptor_id = _descriptor_manager.add_descriptor_set(this->layout_id, _frame_count);
 
     this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
     this->register_resize(width, height);
@@ -36,16 +46,16 @@ void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index)
     vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging[frame_index]->get_buffer(), this->ssbo[frame_index]->get_buffer(), 1, &copy);
 }
 
-void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, VkDescriptorSet& set, u_int32_t frame_index){
+void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index){
     this->upload_shader_data(frame_index);
 
     VkDeviceSize offset{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
     vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[frame_index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
 
-    u_int32_t offsets = 0;
+    u_int32_t o = 0;
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &set, 1, &offsets);
+        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), 1, &o);
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
@@ -53,9 +63,9 @@ void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLa
 
 }
 
-void RenderSystem::add_ssbo_descriptor_set(DescriptorPool& pool){
-    for(auto& it : this->ssbo)
-        pool.add_b(*it);
+void RenderSystem::allocate_from_descriptor_set(){
+    for(int i = 0; i < this->ssbo.size(); ++i)
+        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, *this->ssbo[i], 1);
 }
 
 void RenderSystem::register_resize(int width, int height){
@@ -78,7 +88,6 @@ void RenderSystem::upload_shader_data(u_int32_t frame_index){
 void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout){
     PushConstantRange push{
         .perspective_projection = this->camera.get_projection_view_matrix(),
-        .worldspace_transformation = this->transform.get_transform(true)
     };
     vkCmdPushConstants(cmd_buffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
          0, sizeof(PushConstantRange), &push);
@@ -89,9 +98,9 @@ void RenderSystem::populate(){
     auto buffer1 = Object::get_default_cube({0,0,0});
 
     std::vector<TransformComponent> transforms(1000);
-    for(int x = 0; x < 10; ++x){
-        for(int y = 0; y < 10; ++y){
-            for(int z = 0; z < 10; ++z){
+    for(int x = 0; x < 5; ++x){
+        for(int y = 0; y < 5; ++y){
+            for(int z = 0; z < 5; ++z){
                 transforms[(x*100)+(y*10)+z] = TransformComponent({x*2,-y*2,z*2});
             }
         }
