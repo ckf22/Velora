@@ -18,16 +18,13 @@ class DescriptorPool{
     #endif
     friend class DescriptorManager;
   public:
-    DescriptorPool(Device& _device, u_int32_t _max_sets);
+    DescriptorPool(Device& _device, u_int32_t _max_sets, std::vector<VkDescriptorPoolSize>& pool_sizes);
     ~DescriptorPool();
 
     DescriptorPool(const DescriptorPool&) = delete;
     DescriptorPool& operator=(const DescriptorPool&) = delete;
 
     const u_int32_t get_max_sets() const { return max_sets; }
-    // temp
-    const VkDescriptorSetLayout& get_layout() const { return layout; }
-    VkDescriptorSet& get_set() { return set; }
 
     void create_temp();
     void add_b(MyBuffer& buffer);
@@ -36,10 +33,6 @@ class DescriptorPool{
     const u_int32_t max_sets = 0;
 
     VkDescriptorPool descriptor_pool;
-
-    // temp
-    VkDescriptorSetLayout layout;
-    VkDescriptorSet set;
 };
 
 
@@ -67,7 +60,7 @@ class DescriptorManager{
     ~DescriptorManager();
 
     DescriptorManager& operator=(const DescriptorManager&) = delete;
-    DescriptorManager(DescriptorManager&) = delete;
+    DescriptorManager(const DescriptorManager&) = delete;
 
     DescriptorPool& get_pool(){ return *this->pool; }
     VkDescriptorSet& get_set(int id){ return this->sets[id].set; }

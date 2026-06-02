@@ -70,7 +70,7 @@ void RenderSystem::allocate_from_descriptor_set(){
 
 void RenderSystem::register_resize(int width, int height){
     this->aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
-    this->camera.perspective_projection(.1f, 50.f, 60, this->aspect_ratio);
+    this->camera.perspective_projection(.1f, 200.f, 60, this->aspect_ratio);
 }
 
 void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is short for delta time
@@ -95,19 +95,25 @@ void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineL
 
 void RenderSystem::populate(){
 
-    auto buffer1 = Object::get_default_cube({0,0,0});
+    /*auto buffer1 = Object::get_default_cube({0,0,0});
 
-    std::vector<TransformComponent> transforms(1000);
-    for(int x = 0; x < 5; ++x){
-        for(int y = 0; y < 5; ++y){
-            for(int z = 0; z < 5; ++z){
-                transforms[(x*100)+(y*10)+z] = TransformComponent({x*2,-y*2,z*2});
+    std::vector<TransformComponent> transforms{ {{0,0,0}}, {{2,0,0}} };
+    /*std::vector<TransformComponent> transforms(20000);
+    for(int x = 0; x < 50; ++x){
+        for(int y = 0; y < 20; ++y){
+            for(int z = 0; z < 20; ++z){
+                transforms[(x*400)+(y*20)+z] = TransformComponent({x*2,-y*2,z*2});
             }
         }
-    }
+    }*/
+    /*
     buffer1.get_transforms() = transforms;
 
-    this->objects.add_object(buffer1);
+    this->objects.add_object(buffer1);*/
+
+    Object buffer2 = Object::load_file("models/smooth_vase.obj");
+    buffer2.get_transforms() = { TransformComponent{{0,-2,0},{10,10,10}} };
+    this->objects.add_object(buffer2);
 
     /*
     auto buffer2 = Object::get_default_cube({1,1,1});
@@ -134,7 +140,7 @@ void RenderSystem::create_buffer_objects(){
 
     this->vertex_buffers.clear();
     u_int32_t buffer_size = sizeof(Vertex);
-    u_int32_t count = 2000; // abitrarily high number so the data will fit
+    u_int32_t count = this->objects.get_max_vertex_count();
 
     for(int i = 0; i < this->frame_count; ++i){
         this->vertex_buffers.push_back( 
@@ -146,14 +152,14 @@ void RenderSystem::create_buffer_objects(){
         );
         this->index_buffers.push_back(
             std::make_unique<MyBuffer>(
-                this->device, sizeof(u_int32_t), 2000,
+                this->device, sizeof(u_int32_t), this->objects.get_max_index_count(),
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT
             )
         );
         this->ssbo.push_back(
             std::make_unique<MyBuffer>(
-                this->device, sizeof(glm::mat4), 2000, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                this->device, sizeof(glm::mat4), 1000, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
             )
         );
@@ -167,7 +173,9 @@ void RenderSystem::create_buffer_objects(){
     }
 
     if constexpr (debug)
-        std::cout << "Vertex Buffers created" << std::endl;
+        std::cout << "Vertex Buffers created\n" << 
+        static_cast<float>( (this->vertex_buffers[0]->get_size()+this->index_buffers[0]->get_size()+(this->ssbo_staging[0]->get_size()*2))
+         * this->frame_count )/1000000 << "MB of RAM Used" << std::endl;
 
 }
 

@@ -8,13 +8,18 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
+#include <string>
 #include <vector>
 
 namespace velora{
 
 struct Vertex{
     glm::vec3 position{0.f};
-    glm::vec3 color{.1f};
+    glm::vec3 color{.5f};
+    glm::vec3 normal{0,-1.f,0};
+    glm::vec2 uv{.0f};
+
+    bool operator==(Vertex& other);
 
     static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
     static std::vector<VkVertexInputBindingDescription> get_binding_descriptions();
@@ -23,9 +28,10 @@ struct Vertex{
 class Object{
   public:
     static Object get_default_cube(glm::vec3 offset = {0,0,0});
+    static Object load_file(std::string filename);
 
-    Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, const u_int32_t _max_vertices, const u_int32_t _max_indices);
-    Object(std::vector<Vertex> _vertices, std::vector<u_int32_t> _indices, std::vector<TransformComponent> _transforms,
+    Object(std::vector<Vertex>& _vertices, std::vector<u_int32_t>& _indices, const u_int32_t _max_vertices, const u_int32_t _max_indices);
+    Object(std::vector<Vertex>& _vertices, std::vector<u_int32_t>& _indices, std::vector<TransformComponent>& _transforms,
          const u_int32_t _max_vertices, const u_int32_t _max_indices);
 
     //glm::mat4 get_transform();

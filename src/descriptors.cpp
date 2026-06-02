@@ -5,17 +5,13 @@
 
 namespace velora{
 
-DescriptorPool::DescriptorPool(Device& _device, u_int32_t _max_sets) : device{_device}, max_sets{_max_sets} {
-    VkDescriptorPoolSize pool_size{
-        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        .descriptorCount = 10,
-    };
-
+DescriptorPool::DescriptorPool(Device& _device, u_int32_t _max_sets, std::vector<VkDescriptorPoolSize>& pool_sizes)
+ : device{_device}, max_sets{_max_sets} {
     VkDescriptorPoolCreateInfo ci{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = _max_sets,
-        .poolSizeCount = 1,
-        .pPoolSizes = &pool_size
+        .poolSizeCount = static_cast<u_int32_t>(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data()
     };
 
     if( vkCreateDescriptorPool(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->descriptor_pool) != VK_SUCCESS)
@@ -23,59 +19,10 @@ DescriptorPool::DescriptorPool(Device& _device, u_int32_t _max_sets) : device{_d
 
     if constexpr (debug)
         std::cout << "Descriptor Pool Created" << std::endl;
-
-    this->create_temp();
 }
 
 DescriptorPool::~DescriptorPool(){
-    vkDestroyDescriptorSetLayout(this->device.get_device(), this->layout, nullptr);
     vkDestroyDescriptorPool(this->device.get_device(), this->descriptor_pool, nullptr);
-}
-
-void DescriptorPool::create_temp(){
-    VkDescriptorSetLayoutBinding ds_binding{
-        .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-    };
-    VkDescriptorSetLayoutCreateInfo layout_ci{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .flags = 0,
-        .bindingCount = 1,
-        .pBindings = &ds_binding,
-    };
-
-    if( vkCreateDescriptorSetLayout(this->device.get_device(), &layout_ci, VK_NULL_HANDLE, &this->layout) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create Descriptor Set Layout");
-
-    VkDescriptorSetAllocateInfo alloc_ci{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = this->descriptor_pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &this->layout,
-    };
-    if( vkAllocateDescriptorSets(this->device.get_device(), &alloc_ci, &this->set) != VK_SUCCESS)
-        throw std::runtime_error("Failed to create Descriptor Set Layout");
-
-
-}
-
-void DescriptorPool::add_b(MyBuffer& buffer){
-    VkDescriptorBufferInfo buffer_info{
-        .buffer = buffer.get_buffer(),
-        .offset = 0,
-        .range = buffer.get_size(),
-    };
-    VkWriteDescriptorSet write{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = this->set,
-        .dstBinding = 1,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        .pBufferInfo = &buffer_info,
-    };
-    vkUpdateDescriptorSets(this->device.get_device(), 1, &write, 0, nullptr);
 }
 
 
@@ -113,6 +60,9 @@ void DescriptorManager::allocate_buffer_descriptor(int target_set, MyBuffer& buf
     };
 
     vkUpdateDescriptorSets(this->device.get_device(), 1, &write_data, 0, nullptr);
+
+    if constexpr (debug)
+        std::cout << "Descriptor Set allocated" << std::endl;
 }
 
 
@@ -122,7 +72,7 @@ void DescriptorManager::create_ressources(){
 
     u_int32_t count = 0;
     for(auto& it : this->set_create_data) count += it.count;
-    this->pool = std::make_unique<DescriptorPool>(this->device, count);
+    this->pool = std::make_unique<DescriptorPool>(this->device, count, this->pool_sizes);
 
     for(auto& it : this->set_create_data){
         this->sets.push_back(DescriptorSetData{
@@ -137,6 +87,9 @@ void DescriptorManager::create_ressources(){
         if( vkAllocateDescriptorSets(this->device.get_device(), &this->sets[this->sets.size()-1].alloc_info, &this->sets[this->sets.size()-1].set) != VK_SUCCESS )
             throw std::runtime_error(std::string("Failed to create Descriptor Set from ")+std::to_string(it.layout_id));
     }
+
+    if constexpr (debug)
+        std::cout << "Descriptor Ressources Created" << std::endl;
 
     this->pool_sizes.clear();
     this->set_create_data.clear();
@@ -172,7 +125,7 @@ int DescriptorManager::add_descriptor_set(int layout_id, u_int32_t set_count){
         this->set_create_data.push_back(DescriptorSetCreateData{.layout_id = layout_id, .count = 1});
     
     auto a = this->set_create_data.size() - set_count;  // returns the index of the first set of this call
-    std::cout << "Descriptor Set registered" << std::endl;
+    //std::cout << "Descriptor Set registered" << std::endl;
     return a;
 }
 

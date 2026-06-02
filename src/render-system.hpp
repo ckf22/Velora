@@ -59,10 +59,6 @@ class RenderSystem{
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
-
-    // temp
-    TransformComponent transform{{0,0,0.f}, {2,2,2}, {.0f,.0f, .0f}, {0,0,.0f}};
-    float dy = 0;
 };
 
 } // namespace velora

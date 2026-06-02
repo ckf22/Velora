@@ -60,6 +60,9 @@ void ObjectManager::add_object(Object& _object){
     this->vertex_count += _object.get_vertex_count();
     this->max_vertex_count += _object.get_max_vertex_count();
 
+    this->index_count += _object.get_index_count();
+    this->max_index_count += _object.get_max_index_count();
+
     this->objects.push_back(_object);
 }
 
