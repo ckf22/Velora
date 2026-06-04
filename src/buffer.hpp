@@ -24,6 +24,8 @@ class MyBuffer{
     const VkBuffer& get_buffer() const { return buffer; }
     const VkDeviceMemory& get_ram() const { return ram; }
     u_int32_t get_size() { return element_size * element_count; }
+    VkMemoryPropertyFlags get_ram_flags() { return property_flags; }
+    VkBufferUsageFlags get_usage_flags() { return usage_flags; }
   private:
     void create_buffer(
         u_int32_t size,

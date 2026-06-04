@@ -7,6 +7,9 @@
 #include "device.hpp"
 #include "buffer.hpp"
 
+#define GLM_FORCE_RADIANS
+#include <glm/common.hpp>
+
 #include <memory>
 #include <chrono>
 
@@ -20,7 +23,12 @@ class RenderSystem{
     #endif
   public:
     struct PushConstantRange{
-        glm::mat4 perspective_projection{1.f};
+      glm::mat4 perspective_projection{1.f};
+    };
+    struct UBO{
+      glm::vec3 light_direction;
+      float ambient;
+      glm::vec3 light_color;
     };
 
     RenderSystem(Device& _device, MovementController& _movement_controller, DescriptorManager& _descriptor_manager, 
@@ -56,9 +64,13 @@ class RenderSystem{
     std::vector<std::unique_ptr<MyBuffer>> ssbo;
     std::vector<std::unique_ptr<MyBuffer>> ssbo_staging;
 
+    std::vector<std::unique_ptr<MyBuffer>> ubo;
+    std::vector<std::unique_ptr<MyBuffer>> ubo_staging;
+
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
+    UBO ubo_data{ .light_direction = glm::normalize(glm::vec3{2,-10,2}), .ambient = .02, .light_color = {.9f,.9f,.9f}};
 };
 
 } // namespace velora

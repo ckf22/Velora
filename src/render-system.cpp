@@ -16,14 +16,23 @@ RenderSystem::RenderSystem(Device& _device, MovementController& _movement_contro
     this->populate();
     this->create_buffer_objects();
 
-    this->layout_id = _descriptor_manager.add_layout({VkDescriptorSetLayoutBinding{
-        .binding = 1,
+    this->layout_id = _descriptor_manager.add_layout({
+      VkDescriptorSetLayoutBinding{
+        .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-    }});
+      },
+      VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL
+      },
+    });
 
     _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, _frame_count);
+    _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frame_count);
     this->first_descriptor_id = _descriptor_manager.add_descriptor_set(this->layout_id, _frame_count);
 
     this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
@@ -44,6 +53,19 @@ void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index)
         .size = this->ssbo_staging[frame_index]->get_size()
     };
     vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging[frame_index]->get_buffer(), this->ssbo[frame_index]->get_buffer(), 1, &copy);
+
+
+    dest = this->ubo_staging[frame_index]->map();
+    this->ubo_data.light_color.x -= .005;
+    memcpy(dest, (void*)&this->ubo_data, sizeof(UBO));
+    this->ubo_staging[frame_index]->unmap();
+
+    VkBufferCopy copy2{
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = this->ubo_staging[frame_index]->get_size()
+    };
+    vkCmdCopyBuffer(cmd_buffer, this->ubo_staging[frame_index]->get_buffer(), this->ubo[frame_index]->get_buffer(), 1, &copy2);
 }
 
 void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index){
@@ -53,9 +75,9 @@ void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLa
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
     vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[frame_index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
 
-    u_int32_t o = 0;
+    std::vector<u_int32_t> o{0,0};
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), 1, &o);
+        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), 2, o.data());
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
@@ -64,8 +86,12 @@ void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLa
 }
 
 void RenderSystem::allocate_from_descriptor_set(){
-    for(int i = 0; i < this->ssbo.size(); ++i)
-        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, *this->ssbo[i], 1);
+    for(int i = 0; i < this->frame_count; ++i){
+        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, 
+            *this->ubo[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1);
+        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, 
+            *this->ssbo[i], VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2);
+    }
 }
 
 void RenderSystem::register_resize(int width, int height){
@@ -166,6 +192,19 @@ void RenderSystem::create_buffer_objects(){
         this->ssbo_staging.push_back(
             std::make_unique<MyBuffer>(
                 this->device, this->ssbo[i]->get_size(), 1,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+            ) 
+        );
+        this->ubo.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, sizeof(UBO), 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT| VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            )
+        );
+        this->ubo_staging.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, this->ubo[i]->get_size(), 1,
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT
             ) 

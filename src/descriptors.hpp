@@ -67,11 +67,11 @@ class DescriptorManager{
     VkDescriptorSetLayout& get_layout(int id) { return this->layouts[id].layout; }
     std::vector<VkDescriptorSetLayout> get_layout_vector();
 
-    void allocate_buffer_descriptor(int target_set, MyBuffer& buffer, u_int32_t shader_binding, u_int32_t buffer_offset = 0);
+    void allocate_buffer_descriptor(int target_set, MyBuffer& buffer, VkDescriptorType type, u_int32_t shader_binding, u_int32_t buffer_offset = 0);
 
     // used for constructing
     void create_ressources();
-    int add_layout(std::vector<VkDescriptorSetLayoutBinding> binding_infos, VkDescriptorSetLayoutCreateFlags flags = 0);
+    int add_layout(std::vector<VkDescriptorSetLayoutBinding> binding_info, VkDescriptorSetLayoutCreateFlags flags = 0);
     int add_descriptor_set(int layout_id, u_int32_t set_count); // returns index of descriptor set
     void add_descriptor(VkDescriptorType descriptor_type, u_int32_t descriptor_count);
   private:

@@ -27,6 +27,7 @@ DescriptorPool::~DescriptorPool(){
 
 
 DescriptorManager::DescriptorManager(Device& _device) : device{_device} {}
+
 DescriptorManager::~DescriptorManager(){
     if( this->ressources_created_flag == true )
         for(auto& it : this->layouts)
@@ -40,11 +41,11 @@ std::vector<VkDescriptorSetLayout> DescriptorManager::get_layout_vector(){
     return ret;
 }
 
-void DescriptorManager::allocate_buffer_descriptor(int target_set, MyBuffer& buffer, u_int32_t shader_binding, u_int32_t buffer_offset){
+void DescriptorManager::allocate_buffer_descriptor(int target_set, MyBuffer& buffer, VkDescriptorType type, u_int32_t shader_binding, u_int32_t buffer_offset){
     if( this->ressources_created_flag == false )
         throw std::runtime_error("Ressources have not been created");
 
-        VkDescriptorBufferInfo buffer_info{
+    VkDescriptorBufferInfo buffer_info{
         .buffer = buffer.get_buffer(),
         .offset = buffer_offset,
         .range = buffer.get_size()
@@ -55,7 +56,7 @@ void DescriptorManager::allocate_buffer_descriptor(int target_set, MyBuffer& buf
         .dstSet = this->sets[target_set].set,
         .dstBinding = shader_binding,
         .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .descriptorType = type,
         .pBufferInfo = &buffer_info,
     };
 
@@ -97,7 +98,7 @@ void DescriptorManager::create_ressources(){
     this->ressources_created_flag = true;
 }
 
-int DescriptorManager::add_layout(std::vector<VkDescriptorSetLayoutBinding> binding_infos, VkDescriptorSetLayoutCreateFlags flags){
+int DescriptorManager::add_layout(std::vector<VkDescriptorSetLayoutBinding> binding_info, VkDescriptorSetLayoutCreateFlags flags){
     if( this->ressources_created_flag == true )
         throw std::runtime_error("Ressources have already been created");
 
@@ -105,12 +106,13 @@ int DescriptorManager::add_layout(std::vector<VkDescriptorSetLayoutBinding> bind
         .ci = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .flags = flags,
-            .bindingCount = static_cast<u_int32_t>(binding_infos.size()),
-            .pBindings = binding_infos.data(),
+            .bindingCount = static_cast<u_int32_t>(binding_info.size()),
+            .pBindings = binding_info.data(),
         }
     });
 
-    if( vkCreateDescriptorSetLayout(this->device.get_device(), &this->layouts[this->layouts.size()-1].ci, nullptr, &this->layouts[this->layouts.size()-1].layout ) != VK_SUCCESS )
+    if( vkCreateDescriptorSetLayout(this->device.get_device(), &this->layouts[this->layouts.size()-1].ci,
+     nullptr, &this->layouts[this->layouts.size()-1].layout ) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Descriptor Set Layout");
 
     return this->layouts.size() - 1;
@@ -125,7 +127,7 @@ int DescriptorManager::add_descriptor_set(int layout_id, u_int32_t set_count){
         this->set_create_data.push_back(DescriptorSetCreateData{.layout_id = layout_id, .count = 1});
     
     auto a = this->set_create_data.size() - set_count;  // returns the index of the first set of this call
-    //std::cout << "Descriptor Set registered" << std::endl;
+
     return a;
 }
 
