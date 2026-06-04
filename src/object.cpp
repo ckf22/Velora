@@ -106,6 +106,10 @@ Object Object::load_file(std::string filename){
         }
     }
 
+    // normalising normal vectors
+    for(auto& it : vertices)
+        it.normal = glm::normalize(it.normal);
+
     std::cout << "Loaded Model from file \'" << filename << "':\n" << vertices.size() << " Unique Vertices; " << indices.size() / 3 << " Triangles" << std::endl;
 
     return Object{vertices, indices, static_cast<u_int32_t>(vertices.size()), static_cast<u_int32_t>(indices.size())};
@@ -156,7 +160,6 @@ Object Object::get_default_cube(glm::vec3 offset){
 
 
 std::vector<VkVertexInputAttributeDescription> Vertex::get_attribute_descriptions(){
-    //VkVertexInputAttributeDescription a1_0{.location = 0, .binding = 0, .format = VK_FORMAT_R32G3, .offset = offsetof(Vertex, object_transform)};
     VkVertexInputAttributeDescription a1{.location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, position)};
     VkVertexInputAttributeDescription a2{.location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, color)};
     VkVertexInputAttributeDescription a3{.location = 2, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, normal)};

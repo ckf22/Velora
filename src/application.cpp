@@ -55,10 +55,10 @@ void Application::run(float fps){
         local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
         frame_count++;
 
-        //if( frame_count % 10 == 0 )
-        //std::cout << "Render time microseconds " << 
-        //    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t_u).count()
-        //          << std::endl;
+        if( frame_count % 10 == 0 )
+        std::cout << "Render time microseconds " << 
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t_u).count()
+                  << std::endl;
 
         glfwPollEvents();
 

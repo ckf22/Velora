@@ -70,7 +70,7 @@ class RenderSystem{
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
-    UBO ubo_data{ .light_direction = glm::normalize(glm::vec3{2,-10,2}), .ambient = .02, .light_color = {.9f,.9f,.9f}};
+    UBO ubo_data{ .light_direction = glm::normalize(glm::vec3{0,-10,-15}), .ambient = .02, .light_color = {.9f,.9f,.9f}};
 };
 
 } // namespace velora

@@ -56,7 +56,6 @@ void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index)
 
 
     dest = this->ubo_staging[frame_index]->map();
-    this->ubo_data.light_color.x -= .005;
     memcpy(dest, (void*)&this->ubo_data, sizeof(UBO));
     this->ubo_staging[frame_index]->unmap();
 
@@ -138,9 +137,12 @@ void RenderSystem::populate(){
     this->objects.add_object(buffer1);*/
 
     Object buffer2 = Object::load_file("models/smooth_vase.obj");
-    buffer2.get_transforms() = { TransformComponent{{0,-2,0},{10,10,10}} };
+    buffer2.get_transforms() = { TransformComponent{{3,0,0},{10,10,10}} };
     this->objects.add_object(buffer2);
 
+    Object buffer3 = Object::load_file("models/flat_vase.obj");
+    buffer3.get_transforms() = { TransformComponent{{-3,0,0},{10,10,10}} };
+    this->objects.add_object(buffer3);
     /*
     auto buffer2 = Object::get_default_cube({1,1,1});
     this->objects.add_object(buffer2);

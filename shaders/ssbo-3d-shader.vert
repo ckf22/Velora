@@ -27,12 +27,13 @@ layout(location = 2) out vec3 normal_out;
 
 
 void main(){
-    normal_out = normalize(max(normal_in, vec3(0,-1,0)));
-
     out_color = color;
 
     mat4 transform = matrices[ gl_InstanceIndex ];
     world_pos = (transform * vec4(position, 1.0)).xyz;
 
     gl_Position = push.projection * vec4(world_pos, 1.0);
+
+    normal_out = normalize((transform * vec4(normal_in, 0)).xyz);
+
 }
