@@ -9,6 +9,22 @@
 #include <memory>
 #include <string.h>
 #include <iostream>
+#include <bits/stdc++.h>
+#include <unordered_map>
+
+template<>
+struct std::hash<velora::Vertex> {
+    std::size_t operator()(const velora::Vertex& hash_src) const noexcept {
+        std::size_t value = sizeof(velora::Vertex);
+        std::byte* it = (std::byte*)&hash_src;
+        for (auto i = 0; i < sizeof(velora::Vertex); ++i){
+            it += 1;
+            value = value * 31 + std::hash<std::byte>{}(*it);
+        }
+        return value;
+    }
+};
+
 
 namespace velora{
 
@@ -74,6 +90,8 @@ Object Object::load_file(std::string filename){
     std::vector<Vertex> vertices;
     std::vector<u_int32_t> indices;
 
+    std::unordered_map<Vertex, u_int32_t, std::hash<Vertex>> vertex_register({});
+
     u_int32_t color_index;
     for(auto& it : shapes){
         for(auto& it2 : it.mesh.indices){
@@ -109,19 +127,13 @@ Object Object::load_file(std::string filename){
                 };
 
             // vertices.find(push) : (true) append index to indices ? (false) append to push to 'vertices' and add last index to indices
-            auto index = -1;
-            for(int i = 0; i < vertices.size(); ++i){
-                if( push == vertices[i] ){
-                    index = i;
-                    break;
-                }
-            }
-            if( index == -1 ){
+            auto it = vertex_register.find(push);
+            if(it != vertex_register.end())
+                indices.push_back(it->second);
+            else{
                 vertices.push_back(push);
                 indices.push_back(vertices.size()-1);
-            }
-            else{
-                indices.push_back(index);
+                vertex_register.insert({push, vertices.size()-1});
             }
         }
     }
@@ -196,8 +208,13 @@ std::vector<VkVertexInputBindingDescription> Vertex::get_binding_descriptions(){
     return {a1};
 }
 
-bool Vertex::operator==(Vertex& other){
+bool Vertex::operator==(const Vertex& other) const {
     return (this->position == other.position && this->color == other.color && this->normal == other.normal && this->uv == other.uv);
 }
+
+bool Vertex::operator==(Vertex&& other){
+    return (this->position == other.position && this->color == other.color && this->normal == other.normal && this->uv == other.uv);
+}
+
 
 } // namespace velora

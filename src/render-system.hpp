@@ -6,6 +6,7 @@
 #include "camera.hpp"
 #include "device.hpp"
 #include "buffer.hpp"
+#include "point-light.hpp"
 
 #define GLM_FORCE_RADIANS
 #include <glm/common.hpp>
@@ -67,10 +68,17 @@ class RenderSystem{
     std::vector<std::unique_ptr<MyBuffer>> ubo;
     std::vector<std::unique_ptr<MyBuffer>> ubo_staging;
 
+    std::vector<std::unique_ptr<MyBuffer>> point_lights;
+    std::vector<std::unique_ptr<MyBuffer>> point_lights_staging;
+
+
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
     UBO ubo_data{ .light_direction = glm::normalize(glm::vec3{0,-10,-15}), .ambient = .02, .light_color = {.9f,.9f,.9f}};
+    std::vector<PointLight> point_light_data{
+      PointLight{.position = {10,-5,10}, .intensity = 2.f, .color = {.9f,.9f,.9f}, .range = 20}
+    };
 };
 
 } // namespace velora

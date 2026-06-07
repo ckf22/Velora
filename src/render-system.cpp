@@ -29,9 +29,15 @@ RenderSystem::RenderSystem(Device& _device, MovementController& _movement_contro
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL
       },
+      VkDescriptorSetLayoutBinding{
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+      },
     });
 
-    _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, _frame_count);
+    _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, _frame_count*2);
     _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frame_count);
     this->first_descriptor_id = _descriptor_manager.add_descriptor_set(this->layout_id, _frame_count);
 
@@ -73,9 +79,9 @@ void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLa
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
     vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[frame_index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
 
-    std::vector<u_int32_t> o{0,0};
+    std::vector<u_int32_t> o{0,0,0};
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), 2, o.data());
+        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), static_cast<u_int32_t>(o.size()), o.data());
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
@@ -142,23 +148,24 @@ void RenderSystem::populate(){
     this->objects.add_object(buffer1);*/
 
     Object buffer2 = Object::load_file("models/smooth_vase.obj");
-    buffer2.get_transforms() = { TransformComponent{{3,0,0},{10,10,10}} };
+    buffer2.get_transforms() = { 
+        TransformComponent{{3,0,0},{10,10,10}}, TransformComponent{{0,0,0},{10,-10,10},{glm::radians(glm::vec3{0,0,180})}},
+        TransformComponent{{-3,0,0}, {10,10,10}}
+    };
     this->objects.add_object(std::move(buffer2));
 
-    Object buffer3 = Object::load_file("models/flat_vase.obj");
-    buffer3.get_transforms() = { TransformComponent{{-3,0,0},{10,10,10}} };
-    this->objects.add_object(std::move(buffer3));
+    //Object buffer3 = Object::load_file("models/flat_vase.obj");
+    //buffer3.get_transforms() = { TransformComponent{{-3,0,0},{10,10,10}} };
+    //this->objects.add_object(std::move(buffer3));
 
     Object buffer4 = Object::load_file("models/high-res-apple.obj");
     buffer4.get_transforms() = { TransformComponent({6.f,-2.f,0.f}, {20,-20,20}, {0.1,1.2,0.6} ) };
     this->objects.add_object(std::move(buffer4));
-    /*
-    auto buffer2 = Object::get_default_cube({1,1,1});
-    this->objects.add_object(buffer2);
 
-    auto buffer3 = Object::get_default_cube({1,2.1f,1});
-    this->objects.add_object(buffer3);
-    */
+    Object buffer3 = Object::load_file("models/mcx-spear-eft.obj");
+    buffer3.get_transforms() = { TransformComponent({-2, -5, 0}, {20,20,20}) };
+    this->objects.add_object(std::move(buffer3));
+
     // plane at the bottom
     std::vector<Vertex> buffer5 = {
         {{-10, 0, -10},{.1f,.9f,.9f}},
@@ -210,7 +217,7 @@ void RenderSystem::create_buffer_objects(){
         this->ubo.push_back(
             std::make_unique<MyBuffer>(
                 this->device, sizeof(UBO), 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT| VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
             )
         );
         this->ubo_staging.push_back(
@@ -220,12 +227,32 @@ void RenderSystem::create_buffer_objects(){
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT
             ) 
         );
+        this->point_lights.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, sizeof(PointLight), this->point_light_data.size(),
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+            )
+        );
+        this->point_lights_staging.push_back(
+            std::make_unique<MyBuffer>(
+                this->device, this->point_lights[i]->get_size(), 1,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+            )
+        );
     }
 
     if constexpr (debug)
-        std::cout << "Vertex Buffers created\n" << 
-        static_cast<float>( (this->vertex_buffers[0]->get_size()+this->index_buffers[0]->get_size()+(this->ssbo_staging[0]->get_size()*2))
-         * this->frame_count )/1000000 << "MB of RAM Used" << std::endl;
+        std::cout << "Vertex Buffers created\n" 
+            << static_cast<float>( (
+                    this->vertex_buffers[0]->get_size()
+                    +this->index_buffers[0]->get_size()
+                    +(this->ssbo_staging[0]->get_size()*2)
+                    +(this->point_lights[0]->get_size()*2)
+                ) * this->frame_count 
+            ) / 1000000 
+            << "MB of RAM Used" << std::endl;
 
 }
 

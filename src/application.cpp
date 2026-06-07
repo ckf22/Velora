@@ -58,9 +58,9 @@ void Application::run(float fps){
         frame_count++;
 
         if( frame_count % 10 == 0 )
-        std::cout << "Render time microseconds " << 
-            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t_u).count()
-                  << std::endl;
+            std::cout << "Render time microseconds "
+                << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t0).count()
+                << std::endl;
 
         glfwPollEvents();
 
@@ -284,7 +284,6 @@ void Application::record_command_buffers(){
     vkCmdPipelineBarrier2(cmd_buffer, &present_barrier_dependency);
 
     vkEndCommandBuffer(cmd_buffer);
-
 }
 
 void Application::submit_command_buffers(VkSemaphore& image_aquired_semaphore){

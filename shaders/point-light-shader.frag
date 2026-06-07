@@ -27,13 +27,14 @@ void main(){
     vec3 normal = normalize(normal_in);
 
     // directional light
-    float intensity = max(  dot(normal, ubo.light_direction),  ubo.ambient  );
-    vec3 running_sum = (color*ubo.light_color)*intensity;
+    vec3 running_sum = (color*ubo.light_color) * max(  dot(normal, ubo.light_direction),  ubo.ambient  );
 
-
-    for(int i = 0; i < point_lights.length(); i += 1){
-        if( distance(world_pos, point_lights[i].position) < point_lights[i].range ){
-            running_sum += ((color * point_lights[i].color) * max(0,dot(normal, normalize(point_lights[i].position - world_pos))));
+    // point lights
+    float dist;
+    for(uint i = 0; i < point_lights.length(); i++){
+        dist = max( distance(world_pos, point_lights[i].position), 0.01 ); // so no division by zero occurs
+        if( dist < point_lights[i].range ){
+            running_sum += ((color * point_lights[i].color) * max(0,dot(normal, normalize(point_lights[i].position - world_pos))) / (dist*dist));
         }
     }
 
