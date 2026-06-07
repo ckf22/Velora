@@ -23,12 +23,16 @@ class ObjectManager{
 
     u_int32_t get_vertex_count(){ return vertex_count; }
     u_int32_t get_index_count(){ return index_count; }
-
     u_int32_t get_max_vertex_count() { return max_vertex_count; }
     u_int32_t get_max_index_count() { return max_index_count; }
+
     void add_object(Object& _object);
-    u_int32_t upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes = -1, int max_index_bytes = -1);
-    u_int32_t upload_transforms(void * dest, u_int32_t max_bytes = -1);
+    void add_object(Object&& _object);
+
+    void update_shader_data(std::chrono::microseconds dt);
+
+    u_int32_t upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes = -1, int max_index_bytes = -1, bool force = false);
+    u_int32_t upload_transforms(void * dest, u_int32_t max_bytes = -1, bool force = false);
     void add_draw_calls(VkCommandBuffer& cmd_buffer);
   private:
     std::list<Object> objects;

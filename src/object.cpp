@@ -20,26 +20,46 @@ Object::Object(std::vector<Vertex>& _vertices, std::vector<u_int32_t>& _indices,
 Object::Object(std::vector<Vertex>& _vertices, std::vector<u_int32_t>& _indices, std::vector<TransformComponent>& _transforms, const u_int32_t _max_vertices, const u_int32_t _max_indices)
  : max_indices{_max_indices}, max_vertices{_max_vertices}, vertices{_vertices}, indices{_indices}, transforms{_transforms} {}
 
-u_int32_t Object::write_vertex_data(void * destination){
+u_int32_t Object::write_vertex_data(void * destination, bool force){
     u_int32_t bytes = sizeof(Vertex)*this->vertices.size();
-    memcpy(destination, this->vertices.data(), bytes);
+    if( this->updated == true || force == true ){
+        memcpy(destination, this->vertices.data(), bytes);
+        this->updated = false;
+    }
     return bytes;
 }
 
-u_int32_t Object::write_index_data(void * destination){
+u_int32_t Object::write_index_data(void * destination, bool force){
     u_int32_t bytes = sizeof(u_int32_t)*this->indices.size();
-    mempcpy(destination, this->indices.data(), bytes);
+    if( this->updated == true || force == true ){
+        mempcpy(destination, this->indices.data(), bytes);
+        this->updated = false;
+    }
     return bytes;
 }
 
-u_int32_t Object::write_transform_data(void * destination){
-    glm::mat4 buffer;
-    for(auto& it : this->transforms){
-        buffer = it.get_transform();
-        memcpy(destination, &buffer, sizeof(glm::mat4));
-        destination += sizeof(glm::mat4);
+u_int32_t Object::write_transform_data(void * destination, bool force){
+    if( this->updated == true || force == true ){
+        glm::mat4 buffer;
+        for(auto& it : this->transforms){
+            buffer = it.get_transform();
+            memcpy(destination, &buffer, sizeof(glm::mat4));
+            destination += sizeof(glm::mat4);
+        }
+        this->updated = false;
     }
     return sizeof(glm::mat4) * this->transforms.size();
+}
+
+void Object::update(std::chrono::microseconds dt){
+    if( this->update_funtion.has_value() ){
+        void * parameter = nullptr;
+        if(this->update_function_parameter.has_value())
+            parameter = *this->update_function_parameter;
+
+        //this->update_funtion->operator(parameter);
+        this->updated = true;
+    }
 }
 
 Object Object::load_file(std::string filename){

@@ -16,5 +16,5 @@ layout(set = 0, binding = 1, std140) uniform UBO {
 void main(){
     float intensity = max(  dot(normalize(normal_in), ubo.light_direction),  ubo.ambient  );
 
-    result = vec4(color*intensity, 1);
+    result = vec4((color*ubo.light_color)*intensity, 1);
 }

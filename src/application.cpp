@@ -48,6 +48,8 @@ void Application::run(float fps){
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
         this->render_system.update_shader_data( std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t_u) );
         t_u = std::chrono::high_resolution_clock::now();
+        // the second parameter forces the upload of data into all of the seperate (frames_in_flight) buffers
+        this->render_system.upload_shader_data(this->swapchain.get_current_index(), frame_count < this->swapchain.get_image_count());
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();

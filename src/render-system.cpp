@@ -44,7 +44,7 @@ RenderSystem::~RenderSystem(){
 
 void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
     auto dest = this->ssbo_staging[frame_index]->map();
-    this->objects.upload_transforms(dest);
+    this->objects.upload_transforms(dest, -1, true);
     this->ssbo_staging[frame_index]->unmap();
 
     VkBufferCopy copy{
@@ -68,7 +68,6 @@ void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index)
 }
 
 void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index){
-    this->upload_shader_data(frame_index);
 
     VkDeviceSize offset{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
@@ -81,7 +80,6 @@ void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLa
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
     this->objects.add_draw_calls(cmd_buffer);
-
 }
 
 void RenderSystem::allocate_from_descriptor_set(){
@@ -100,11 +98,18 @@ void RenderSystem::register_resize(int width, int height){
 
 void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is short for delta time
     this->movement_controller.apply_to_camera(camera);
+
+    this->objects.update_shader_data(dt);
 }
 
-void RenderSystem::upload_shader_data(u_int32_t frame_index){
-    auto a = this->objects.upload_shader_data( this->vertex_buffers[frame_index]->map(), this->index_buffers[frame_index]->map(),
-     this->vertex_buffers[frame_index]->get_size(), this->index_buffers[frame_index]->get_size());
+void RenderSystem::upload_shader_data(u_int32_t frame_index, bool force_upload){
+    auto a = this->objects.upload_shader_data(
+        this->vertex_buffers[frame_index]->map(),
+        this->index_buffers[frame_index]->map(),
+        this->vertex_buffers[frame_index]->get_size(),
+        this->index_buffers[frame_index]->get_size(),
+        force_upload
+    );
 
     //if constexpr (debug)
     //    std::cout << "Copied " << a << " Bytes" << std::endl;
@@ -138,11 +143,15 @@ void RenderSystem::populate(){
 
     Object buffer2 = Object::load_file("models/smooth_vase.obj");
     buffer2.get_transforms() = { TransformComponent{{3,0,0},{10,10,10}} };
-    this->objects.add_object(buffer2);
+    this->objects.add_object(std::move(buffer2));
 
     Object buffer3 = Object::load_file("models/flat_vase.obj");
     buffer3.get_transforms() = { TransformComponent{{-3,0,0},{10,10,10}} };
-    this->objects.add_object(buffer3);
+    this->objects.add_object(std::move(buffer3));
+
+    Object buffer4 = Object::load_file("models/high-res-apple.obj");
+    buffer4.get_transforms() = { TransformComponent({6.f,-2.f,0.f}, {20,-20,20}, {0.1,1.2,0.6} ) };
+    this->objects.add_object(std::move(buffer4));
     /*
     auto buffer2 = Object::get_default_cube({1,1,1});
     this->objects.add_object(buffer2);
@@ -151,14 +160,14 @@ void RenderSystem::populate(){
     this->objects.add_object(buffer3);
     */
     // plane at the bottom
-    std::vector<Vertex> buffer4 = {
+    std::vector<Vertex> buffer5 = {
         {{-10, 0, -10},{.1f,.9f,.9f}},
         {{-10, 0, 10},{.9f,.9f,.1f}},
         {{10, 0, -10},{.9f,.1f,.9f}},
         {{10, 0, 10},{.1f,.9f,.9f}}
     };
     std::vector<u_int32_t> indices = {0,1,2,1,2,3};
-    Object object4(buffer4, indices, static_cast<u_int32_t>(buffer4.size()), static_cast<u_int32_t>(indices.size()));
+    Object object4(buffer5, indices, static_cast<u_int32_t>(buffer5.size()), static_cast<u_int32_t>(indices.size()));
     this->objects.add_object(object4);
     
 }

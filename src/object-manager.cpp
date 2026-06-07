@@ -21,12 +21,17 @@ void ObjectManager::add_draw_calls(VkCommandBuffer& cmd_buffer){
     }
 }
 
-u_int32_t ObjectManager::upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes, int max_index_bytes){
+void ObjectManager::update_shader_data(std::chrono::microseconds dt){
+    for(auto& it : this->objects)
+        it.update(dt);
+}
+
+u_int32_t ObjectManager::upload_shader_data(void * vertex_dest, void * index_dest, int max_vertex_bytes, int max_index_bytes, bool force){
     int running_sum_vertex = max_vertex_bytes;
     // Copying vertex data
     for(auto& it : this->objects){
         if(running_sum_vertex - it.get_required_ram() < 0) break;
-        auto buffer = it.write_vertex_data(vertex_dest);
+        auto buffer = it.write_vertex_data(vertex_dest, force);
         running_sum_vertex -= buffer;
         vertex_dest += buffer;
     }
@@ -35,7 +40,7 @@ u_int32_t ObjectManager::upload_shader_data(void * vertex_dest, void * index_des
     // Copying indices
     for(auto& it : this->objects){
         if(running_sum_index - (it.get_index_count() * sizeof(u_int32_t)) < 0) break;
-        auto buffer = it.write_index_data(index_dest);
+        auto buffer = it.write_index_data(index_dest, force);
         running_sum_index -= buffer;
         index_dest += buffer;
     }
@@ -43,12 +48,12 @@ u_int32_t ObjectManager::upload_shader_data(void * vertex_dest, void * index_des
     return max_vertex_bytes - running_sum_vertex + max_index_bytes - running_sum_index;
 }
 
-u_int32_t ObjectManager::upload_transforms(void * dest, u_int32_t max_bytes){
+u_int32_t ObjectManager::upload_transforms(void * dest, u_int32_t max_bytes, bool force){
     int remaining_ram = max_bytes;
     for(auto& it : this->objects){
         if( remaining_ram - (it.get_transform_count() * sizeof(glm::mat4)) < 0) break;
 
-        auto buffer = it.write_transform_data(dest);
+        auto buffer = it.write_transform_data(dest, force);
         remaining_ram -= buffer;
         dest += buffer;
     }
@@ -57,6 +62,16 @@ u_int32_t ObjectManager::upload_transforms(void * dest, u_int32_t max_bytes){
 }
 
 void ObjectManager::add_object(Object& _object){
+    this->vertex_count += _object.get_vertex_count();
+    this->max_vertex_count += _object.get_max_vertex_count();
+
+    this->index_count += _object.get_index_count();
+    this->max_index_count += _object.get_max_index_count();
+
+    this->objects.push_back(_object);
+}
+
+void ObjectManager::add_object(Object&& _object){
     this->vertex_count += _object.get_vertex_count();
     this->max_vertex_count += _object.get_max_vertex_count();
 

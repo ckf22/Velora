@@ -44,7 +44,7 @@ class RenderSystem{
     void register_resize(int width, int height);
 
     void update_shader_data(std::chrono::microseconds dt);
-    void upload_shader_data(u_int32_t frame_index);
+    void upload_shader_data(u_int32_t frame_index, bool force_upload = false);
     void fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index); // copy command has to be executed through a command buffer
     void fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index);
   private:

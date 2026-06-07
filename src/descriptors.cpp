@@ -62,8 +62,8 @@ void DescriptorManager::allocate_buffer_descriptor(int target_set, MyBuffer& buf
 
     vkUpdateDescriptorSets(this->device.get_device(), 1, &write_data, 0, nullptr);
 
-    if constexpr (debug)
-        std::cout << "Descriptor Set allocated" << std::endl;
+    //if constexpr (debug)
+    //    std::cout << "Descriptor Set allocated" << std::endl;
 }
 
 
