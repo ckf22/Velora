@@ -9,7 +9,6 @@
 #include <memory>
 #include <string.h>
 #include <iostream>
-#include <bits/stdc++.h>
 #include <unordered_map>
 
 template<>
@@ -18,8 +17,8 @@ struct std::hash<velora::Vertex> {
         std::size_t value = sizeof(velora::Vertex);
         std::byte* it = (std::byte*)&hash_src;
         for (auto i = 0; i < sizeof(velora::Vertex); ++i){
-            it += 1;
             value = value * 31 + std::hash<std::byte>{}(*it);
+            it += 1;
         }
         return value;
     }
@@ -90,7 +89,8 @@ Object Object::load_file(std::string filename){
     std::vector<Vertex> vertices;
     std::vector<u_int32_t> indices;
 
-    std::unordered_map<Vertex, u_int32_t, std::hash<Vertex>> vertex_register({});
+    // Stores Vertices and the index the have
+    std::unordered_map<Vertex, u_int32_t> vertex_register({});
 
     u_int32_t color_index;
     for(auto& it : shapes){

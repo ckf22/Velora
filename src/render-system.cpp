@@ -131,22 +131,6 @@ void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineL
 
 void RenderSystem::populate(){
 
-    /*auto buffer1 = Object::get_default_cube({0,0,0});
-
-    std::vector<TransformComponent> transforms{ {{0,0,0}}, {{2,0,0}} };
-    /*std::vector<TransformComponent> transforms(20000);
-    for(int x = 0; x < 50; ++x){
-        for(int y = 0; y < 20; ++y){
-            for(int z = 0; z < 20; ++z){
-                transforms[(x*400)+(y*20)+z] = TransformComponent({x*2,-y*2,z*2});
-            }
-        }
-    }*/
-    /*
-    buffer1.get_transforms() = transforms;
-
-    this->objects.add_object(buffer1);*/
-
     Object buffer2 = Object::load_file("models/smooth_vase.obj");
     buffer2.get_transforms() = { 
         TransformComponent{{3,0,0},{10,10,10}}, TransformComponent{{0,0,0},{10,-10,10},{glm::radians(glm::vec3{0,0,180})}},
@@ -158,13 +142,8 @@ void RenderSystem::populate(){
     //buffer3.get_transforms() = { TransformComponent{{-3,0,0},{10,10,10}} };
     //this->objects.add_object(std::move(buffer3));
 
-    Object buffer4 = Object::load_file("models/high-res-apple.obj");
-    buffer4.get_transforms() = { TransformComponent({6.f,-2.f,0.f}, {20,-20,20}, {0.1,1.2,0.6} ) };
-    this->objects.add_object(std::move(buffer4));
-
-    Object buffer3 = Object::load_file("models/mcx-spear-eft.obj");
-    buffer3.get_transforms() = { TransformComponent({-2, -5, 0}, {20,20,20}) };
-    this->objects.add_object(std::move(buffer3));
+    this->objects.load_file("models/high-res-apple.obj", {TransformComponent({6.f,-2.f,0.f},{20,-20,20},{0.1,1.2,0.6})} );
+    this->objects.load_file("models/mcx-spear-eft.obj", {TransformComponent({-2,-8,0},{20,20,20},{glm::radians(glm::vec3{-20,160, -20})})} );
 
     // plane at the bottom
     std::vector<Vertex> buffer5 = {

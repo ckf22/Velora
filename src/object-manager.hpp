@@ -26,6 +26,7 @@ class ObjectManager{
     u_int32_t get_max_vertex_count() { return max_vertex_count; }
     u_int32_t get_max_index_count() { return max_index_count; }
 
+    void load_file(std::string filename, std::vector<TransformComponent> transforms = {TransformComponent{}});
     void add_object(Object& _object);
     void add_object(Object&& _object);
 

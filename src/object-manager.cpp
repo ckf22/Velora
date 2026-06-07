@@ -61,6 +61,20 @@ u_int32_t ObjectManager::upload_transforms(void * dest, u_int32_t max_bytes, boo
     return max_bytes - remaining_ram;
 }
 
+void ObjectManager::load_file(std::string filename, std::vector<TransformComponent> transforms){
+    this->objects.emplace_back(Object::load_file(filename));
+
+    auto& it = this->objects.back();
+
+    it.get_transforms() = transforms;
+
+    this->vertex_count += it.get_vertex_count();
+    this->max_vertex_count += it.get_max_vertex_count();
+
+    this->index_count += it.get_index_count();
+    this->max_index_count += it.get_max_index_count();    
+}
+
 void ObjectManager::add_object(Object& _object){
     this->vertex_count += _object.get_vertex_count();
     this->max_vertex_count += _object.get_max_vertex_count();
