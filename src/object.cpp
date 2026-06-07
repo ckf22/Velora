@@ -1,5 +1,7 @@
 #include "object.hpp"
 
+#include "libs/hash.hpp"
+
 #define GLM_FORCE_RADIANS
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -10,19 +12,6 @@
 #include <string.h>
 #include <iostream>
 #include <unordered_map>
-
-template<>
-struct std::hash<velora::Vertex> {
-    std::size_t operator()(const velora::Vertex& hash_src) const noexcept {
-        std::size_t value = sizeof(velora::Vertex);
-        std::byte* it = (std::byte*)&hash_src;
-        for (auto i = 0; i < sizeof(velora::Vertex); ++i){
-            value = value * 31 + std::hash<std::byte>{}(*it);
-            it += 1;
-        }
-        return value;
-    }
-};
 
 
 namespace velora{
@@ -90,7 +79,7 @@ Object Object::load_file(std::string filename){
     std::vector<u_int32_t> indices;
 
     // Stores Vertices and the index the have
-    std::unordered_map<Vertex, u_int32_t> vertex_register({});
+    std::unordered_map<Vertex, u_int32_t, hash::hash_struct<Vertex>> vertex_register({});
 
     u_int32_t color_index;
     for(auto& it : shapes){
