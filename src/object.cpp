@@ -12,6 +12,7 @@
 #include <string.h>
 #include <iostream>
 #include <unordered_map>
+#include <chrono>
 
 
 namespace velora{
@@ -67,6 +68,8 @@ void Object::update(std::chrono::microseconds dt){
 }
 
 Object Object::load_file(std::string filename){
+    auto t0 = std::chrono::high_resolution_clock::now();
+
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -74,14 +77,16 @@ Object Object::load_file(std::string filename){
 
     if( !tinyobj::LoadObj(&attrib, &shapes, &materials, &warning, &error, filename.c_str()) )
         throw std::runtime_error(warning + error);
+
+    constexpr int increment_step = 1000;
     
-    std::vector<Vertex> vertices;
-    std::vector<u_int32_t> indices;
+    std::vector<Vertex> vertices(increment_step);
+    std::vector<u_int32_t> indices(increment_step);
 
     // Stores Vertices and the index the have
     std::unordered_map<Vertex, u_int32_t, hash::hash_struct<Vertex>> vertex_register({});
 
-    u_int32_t color_index;
+    u_int32_t color_index, vertices_index = 0, indices_index = 0;
     for(auto& it : shapes){
         for(auto& it2 : it.mesh.indices){
             Vertex push;
@@ -115,23 +120,44 @@ Object Object::load_file(std::string filename){
                     attrib.texcoords[2*it2.texcoord_index+1]
                 };
 
-            // vertices.find(push) : (true) append index to indices ? (false) append to push to 'vertices' and add last index to indices
+            // 'indices_index' has reached the end of the vector
+            if(indices_index == indices.size())
+                indices.resize(indices.size()+increment_step);
+
             auto it = vertex_register.find(push);
-            if(it != vertex_register.end())
-                indices.push_back(it->second);
+
+            // appending the index stored in the value of 'vertex_register'
+            if(it != vertex_register.end()){
+                indices[indices_index] = it->second;
+                indices_index++;
+            }
+
+            // append the new vertex to the list, add it's index to 'indices' and add an entry to 'vertex_register'
             else{
-                vertices.push_back(push);
-                indices.push_back(vertices.size()-1);
-                vertex_register.insert({push, vertices.size()-1});
+                if(vertices_index == vertices.size())
+                    vertices.resize(vertices.size()+increment_step);
+
+                vertices[vertices_index] = push;
+                vertices_index++;
+
+                indices[indices_index] = vertices_index-1;
+                indices_index++;
+
+                vertex_register.insert({push, vertices_index-1});
             }
         }
     }
+
+    vertices.resize(vertices_index);
+    indices.resize(indices_index);
 
     // normalising normal vectors
     for(auto& it : vertices)
         it.normal = glm::normalize(it.normal);
 
-    std::cout << "Loaded Model from file \'" << filename << "':\n" << vertices.size() << " Unique Vertices; " << indices.size() / 3 << " Triangles" << std::endl;
+    std::cout << "Loaded Model from file \'" << filename << "\'(" 
+              << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t0).count()
+              << "ms):\n" << vertices.size() << " Unique Vertices; " << indices.size() / 3 << " Triangles;" << std::endl;
 
     return Object{vertices, indices, static_cast<u_int32_t>(vertices.size()), static_cast<u_int32_t>(indices.size())};
 }

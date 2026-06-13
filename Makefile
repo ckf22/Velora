@@ -15,7 +15,7 @@ INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS)) -I.
 LIBS := -L /usr/lib/x86_64-linux-gnu/libglfw.so* /usr/lib/x86_64-linux-gnu/libvulkan*
 
-CPPFLAGS := $(INC_FLAGS) -MMD -MP
+CPPFLAGS := $(INC_FLAGS) -MMD -MP -O1
 
 VERT_SRCS := $(shell find $(ShADER_DIR) -type f -name '*.vert')
 VERT_OBJS := $(patsubst %.vert, %.vert.spv, $(VERT_SRCS))
