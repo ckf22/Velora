@@ -42,13 +42,16 @@ RenderSystem::RenderSystem(Device& _device, MovementController& _movement_contro
     this->first_descriptor_id = _descriptor_manager.add_descriptor_set(this->layout_id, _frame_count);
 
     this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
-    this->register_resize(width, height);
+    this->apply_resize_to_camera(width, height);
 }
 
 RenderSystem::~RenderSystem(){
 }
 
-void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index){
+void RenderSystem::populate_unique_buffers(VkCommandBuffer& cmd_buffer, u_int32_t frame_index, bool force_upload){
+    if( !force_upload )
+        return;
+
     auto dest = this->ssbo_staging[frame_index]->map();
     this->objects.upload_transforms(dest, -1, true);
     this->ssbo_staging[frame_index]->unmap();
@@ -71,17 +74,34 @@ void RenderSystem::fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index)
         .size = this->ubo_staging[frame_index]->get_size()
     };
     vkCmdCopyBuffer(cmd_buffer, this->ubo_staging[frame_index]->get_buffer(), this->ubo[frame_index]->get_buffer(), 1, &copy2);
+
+    dest = this->point_lights_staging[frame_index]->map();
+
+    //u_int32_t point_light_count = static_cast<u_int32_t>(this->point_light_data.size());
+    //memcpy(dest, (void*)&point_light_count, sizeof(u_int32_t));
+    //dest += 4; // Alignment requirenment as specified in 'std430' RAM layout
+
+    memcpy(dest, this->point_light_data.data(), this->point_light_data.size()*sizeof(PointLight));
+    this->point_lights_staging[frame_index]->unmap();
+
+    VkBufferCopy copy3{
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = this->point_lights_staging[frame_index]->get_size()
+    };
+    vkCmdCopyBuffer(cmd_buffer, this->point_lights_staging[frame_index]->get_buffer(),
+        this->point_lights[frame_index]->get_buffer(), 1, &copy3);
 }
 
-void RenderSystem::fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index){
+void RenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index){
 
     VkDeviceSize offset{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
     vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[frame_index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
 
-    std::vector<u_int32_t> o{0,0,0};
+    std::vector<u_int32_t> offsets{0,0,0};
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), static_cast<u_int32_t>(o.size()), o.data());
+        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), static_cast<u_int32_t>(offsets.size()), offsets.data());
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
@@ -94,10 +114,12 @@ void RenderSystem::allocate_from_descriptor_set(){
             *this->ubo[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1);
         this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, 
             *this->ssbo[i], VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2);
+        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i,
+            *this->point_lights[i], VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 3);
     }
 }
 
-void RenderSystem::register_resize(int width, int height){
+void RenderSystem::apply_resize_to_camera(int width, int height){
     this->aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
     this->camera.perspective_projection(.1f, 200.f, 60, this->aspect_ratio);
 }
@@ -154,8 +176,13 @@ void RenderSystem::populate(){
     };
     std::vector<u_int32_t> indices = {0,1,2,1,2,3};
     Object object4(buffer5, indices, static_cast<u_int32_t>(buffer5.size()), static_cast<u_int32_t>(indices.size()));
-    this->objects.add_object(object4);
-    
+    this->objects.add_object(std::move(object4));
+
+    this->point_light_data = {
+        PointLight{.position = {0,-5,0}, .intensity = 12.f, .color = {.1f,.2f,.9f}, .range = 20},
+        PointLight{.position = {0,0,5}, .intensity = 15.f, .color = {1,.2f,.2f}, .range = 15}
+    };
+    this->ubo_data.point_light_count = static_cast<u_int32_t>(this->point_light_data.size());
 }
 
 
@@ -208,7 +235,7 @@ void RenderSystem::create_buffer_objects(){
         );
         this->point_lights.push_back(
             std::make_unique<MyBuffer>(
-                this->device, sizeof(PointLight), this->point_light_data.size(),
+                this->device, sizeof(PointLight), this->point_light_data.size()+1,  // as buffer for the count variable
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
             )

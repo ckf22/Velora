@@ -30,6 +30,7 @@ class RenderSystem{
       glm::vec3 light_direction;
       float ambient;
       glm::vec3 light_color;
+      u_int32_t point_light_count;
     };
 
     RenderSystem(Device& _device, MovementController& _movement_controller, DescriptorManager& _descriptor_manager, 
@@ -42,12 +43,12 @@ class RenderSystem{
     u_int32_t get_vertex_count() { return objects.get_vertex_count(); }
 
     void allocate_from_descriptor_set();
-    void register_resize(int width, int height);
+    void apply_resize_to_camera(int width, int height);
 
     void update_shader_data(std::chrono::microseconds dt);
     void upload_shader_data(u_int32_t frame_index, bool force_upload = false);
-    void fill_ssbo(VkCommandBuffer& cmd_buffer, u_int32_t frame_index); // copy command has to be executed through a command buffer
-    void fill_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index);
+    void populate_unique_buffers(VkCommandBuffer& cmd_buffer, u_int32_t frame_index, bool force_upload = false); // copy command has to be executed through a command buffer
+    void populate_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index);
   private:
     void push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout);
     void populate();
@@ -75,10 +76,13 @@ class RenderSystem{
     float aspect_ratio;
     Camera camera{};
     ObjectManager objects{};
-    UBO ubo_data{ .light_direction = glm::normalize(glm::vec3{0,-10,-15}), .ambient = .02, .light_color = {.9f,.9f,.9f}};
-    std::vector<PointLight> point_light_data{
-      PointLight{.position = {10,-5,10}, .intensity = 2.f, .color = {.9f,.9f,.9f}, .range = 20}
+    UBO ubo_data{
+      .light_direction = glm::normalize(glm::vec3{0,-10,-15}),
+      .ambient = .02,
+      .light_color = {.9f,.9f,.9f},
+      .point_light_count = static_cast<u_int32_t>(this->point_light_data.size())
     };
+    std::vector<PointLight> point_light_data;
 };
 
 } // namespace velora

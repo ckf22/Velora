@@ -27,8 +27,7 @@ class Pipeline{
     Pipeline(Pipeline&) = delete;
 
     VkPipelineLayout& get_pipeline_layout() { return pipeline_layout; }
-
-    void bind_cmd_buffer(VkCommandBuffer& cmd_buffer);
+    VkPipeline& get_pipeline() { return pipeline; }
   private:
     void create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format);
     void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors);

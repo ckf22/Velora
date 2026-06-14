@@ -87,7 +87,7 @@ void Application::resize(u_int32_t width, u_int32_t height){
     this->device.destroy_window_surface();
     this->device.recreate_window_surface();
     this->swapchain.recreate_swapchain({width, height});
-    this->render_system.register_resize(width, height);
+    this->render_system.apply_resize_to_camera(width, height);
 }
 
 void Application::resize(){
@@ -99,7 +99,7 @@ void Application::resize(){
     this->device.recreate_window_surface();
     auto new_extent = window.get_window_extent();
     this->swapchain.recreate_swapchain(new_extent);
-    this->render_system.register_resize(new_extent.width, new_extent.height);
+    this->render_system.apply_resize_to_camera(new_extent.width, new_extent.height);
 
     this->window.reset_window_resized_flag();
 }
@@ -242,7 +242,7 @@ void Application::record_command_buffers(){
         .pDepthAttachment = &depth_attachment
     };
 
-    this->render_system.fill_ssbo(cmd_buffer, index);
+    this->render_system.populate_unique_buffers(cmd_buffer, index, true);
 
     vkCmdBeginRendering(cmd_buffer, &render_info);
 
@@ -258,9 +258,9 @@ void Application::record_command_buffers(){
     VkRect2D scissor{.extent = this->swapchain.get_current_extent()};
     vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
-    this->pipeline.bind_cmd_buffer(cmd_buffer);
+    vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.get_pipeline());
 
-    this->render_system.fill_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
+    this->render_system.populate_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
 
     vkCmdEndRendering(cmd_buffer);
 

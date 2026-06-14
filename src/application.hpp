@@ -52,7 +52,7 @@ class Application{
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
     RenderSystem render_system{device, movement_controller, descriptor_manager, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
 
-    Pipeline pipeline{device, {descriptor_manager.get_layout_vector()}, "./shaders/ssbo-3d-shader.vert.spv", "./shaders/ssbo-3d-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
+    Pipeline pipeline{device, descriptor_manager.get_layout_vector(), "./shaders/ssbo-3d-shader.vert.spv", "./shaders/point-light-shader.frag.spv", {WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()};
 
 };
 
