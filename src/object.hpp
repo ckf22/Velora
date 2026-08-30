@@ -31,6 +31,9 @@ struct Vertex{
 
 class Object{
   public:
+    // temp
+    static Object perlin_noise(glm::vec3 scale, float octave_length, u_int32_t extent, u_int32_t density);
+
     static Object get_default_cube(glm::vec3 offset = {0,0,0});
     static Object load_file(std::string filename);
 

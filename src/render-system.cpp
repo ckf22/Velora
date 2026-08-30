@@ -11,37 +11,38 @@
 
 namespace velora{
 
-RenderSystem::RenderSystem(Device& _device, MovementController& _movement_controller, DescriptorManager& _descriptor_manager, const u_int32_t _frame_count, int width, int height)
+RenderSystem::RenderSystem(Device& _device, MovementController& _movement_controller, Descriptors& _descriptor_manager, const u_int32_t _frame_count, int width, int height)
  : device{_device}, frame_count{_frame_count}, movement_controller{_movement_controller}, descriptor_manager{_descriptor_manager} {
     this->populate();
     this->create_buffer_objects();
 
-    this->layout_id = _descriptor_manager.add_layout({
-      VkDescriptorSetLayoutBinding{
-        .binding = 2,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-      },
+    this->descriptor_manager.add_binding( 
       VkDescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL
-      },
+      }
+    );
+    this->descriptor_manager.add_binding( 
+      VkDescriptorSetLayoutBinding{
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+      }
+    );
+    this->descriptor_manager.add_binding( 
       VkDescriptorSetLayoutBinding{
         .binding = 3,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
-      },
-    });
+      }
+    );
 
-    _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, _frame_count*2);
-    _descriptor_manager.add_descriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frame_count);
-    this->first_descriptor_id = _descriptor_manager.add_descriptor_set(this->layout_id, _frame_count);
 
-    this->camera.view_angles({0, -.0f, -10}, {.0f, 0.f, .0f});
+    this->camera.view_angles({0, -.5f, -10}, {.0f, 0.f, .0f});
     this->apply_resize_to_camera(width, height);
 }
 
@@ -101,7 +102,7 @@ void RenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, VkPipeli
 
     std::vector<u_int32_t> offsets{0,0,0};
     vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &this->descriptor_manager.get_set(this->first_descriptor_id+frame_index), static_cast<u_int32_t>(offsets.size()), offsets.data());
+        0, 1, &this->descriptor_manager.get_set(frame_index), static_cast<u_int32_t>(offsets.size()), offsets.data());
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
@@ -109,19 +110,66 @@ void RenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, VkPipeli
 }
 
 void RenderSystem::allocate_from_descriptor_set(){
+    VkDescriptorBufferInfo info_ubo{
+        .buffer = this->ubo[0]->get_buffer(),
+        .offset = 0,
+        .range = this->ubo[0]->get_size()
+    };
+    VkWriteDescriptorSet write_ubo{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstBinding = 1,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .pBufferInfo = &info_ubo,
+    };
+
+
+    VkDescriptorBufferInfo info_ssbo{
+        .buffer = this->ssbo[0]->get_buffer(),
+        .offset = 0,
+        .range = this->ssbo[0]->get_size()
+    };
+    VkWriteDescriptorSet write_ssbo{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstBinding = 2,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .pBufferInfo = &info_ssbo,
+    };
+
+
+    VkDescriptorBufferInfo info_point_light{
+        .buffer = this->point_lights[0]->get_buffer(),
+        .offset = 0,
+        .range = this->point_lights[0]->get_size()
+    };
+    VkWriteDescriptorSet write_point_light{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstBinding = 3,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .pBufferInfo = &info_point_light,
+    };
+
     for(int i = 0; i < this->frame_count; ++i){
-        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, 
-            *this->ubo[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1);
-        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i, 
-            *this->ssbo[i], VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2);
-        this->descriptor_manager.allocate_buffer_descriptor(this->first_descriptor_id + i,
-            *this->point_lights[i], VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 3);
+        info_ubo.buffer = this->ubo[i]->get_buffer();
+        info_ubo.range = this->ubo[i]->get_size();
+
+        info_ssbo.buffer = this->ssbo[i]->get_buffer();
+        info_ssbo.range = this->ssbo[i]->get_size();
+
+        info_point_light.buffer = this->point_lights[i]->get_buffer();
+        info_point_light.range = this->point_lights[i]->get_size();
+
+        this->descriptor_manager.allocate_descriptor(write_ubo, i);
+        this->descriptor_manager.allocate_descriptor(write_ssbo, i);
+        this->descriptor_manager.allocate_descriptor(write_point_light, i);
     }
 }
 
 void RenderSystem::apply_resize_to_camera(int width, int height){
     this->aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
-    this->camera.perspective_projection(.1f, 200.f, 60, this->aspect_ratio);
+    this->camera.perspective_projection(.1f, 1000.f, 60, this->aspect_ratio);
 }
 
 void RenderSystem::update_shader_data(std::chrono::microseconds dt){ // dt is short for delta time
@@ -152,36 +200,41 @@ void RenderSystem::push_constant_ranges(VkCommandBuffer& cmd_buffer, VkPipelineL
 }
 
 void RenderSystem::populate(){
-
-    Object buffer2 = Object::load_file("models/smooth_vase.obj");
+    //Object perlin_noise = Object::perlin_noise({4.f,10.7f,4.f},3,40,20);
+    //perlin_noise.get_transforms() = { TransformComponent{{-20,0,-20},{10,10,10}} };
+    //this->objects.add_object(std::move(perlin_noise));
+    /*Object buffer2 = Object::load_file("models/smooth_vase.obj");
     buffer2.get_transforms() = { 
         TransformComponent{{3,0,0},{10,10,10}}, TransformComponent{{0,0,0},{10,-10,10},{glm::radians(glm::vec3{0,0,180})}},
         TransformComponent{{-3,0,0}, {10,10,10}}
     };
-    this->objects.add_object(std::move(buffer2));
+    this->objects.add_object(std::move(buffer2));*/
 
     //Object buffer3 = Object::load_file("models/flat_vase.obj");
     //buffer3.get_transforms() = { TransformComponent{{-3,0,0},{10,10,10}} };
     //this->objects.add_object(std::move(buffer3));
 
-    this->objects.load_file("models/high-res-apple.obj", {TransformComponent({6.f,-2.f,0.f},{20,-20,20},{0.1,1.2,0.6})} );
-    this->objects.load_file("models/mcx-spear-eft.obj", {TransformComponent({-2,-8,0},{20,20,20},{glm::radians(glm::vec3{-20,160, -20})})} );
+    //this->objects.load_file("models/high-res-apple.obj", {TransformComponent({6.f,-2.f,0.f},{20,-20,20},{0.1,1.2,0.6})} );
+    //this->objects.load_file("models/mcx-spear-eft.obj", {TransformComponent({-2,-8,0},{20,20,20},{glm::radians(glm::vec3{-20,160, -20})})} );
+    //this->objects.load_file("./models/terrain-mesh.obj", { TransformComponent{{-10,0,-10},{2,2,2},{glm::radians(90.f),0,0}} }  );
 
     // plane at the bottom
     std::vector<Vertex> buffer5 = {
-        {{-10, 0, -10},{.1f,.9f,.9f}},
-        {{-10, 0, 10},{.9f,.9f,.1f}},
-        {{10, 0, -10},{.9f,.1f,.9f}},
-        {{10, 0, 10},{.1f,.9f,.9f}}
+        {{-10, 0, -10},{.1f,.9f,.9f}, {0,-1,0}, {0,0}},
+        {{-10, 0, 10},{.9f,.9f,.1f},  {0,-1,0}, {1,0}},
+        {{10, 0, -10},{.9f,.1f,.9f},  {0,-1,0}, {0,1}},
+        {{10, 0, 10},{.1f,.9f,.9f},   {0,-1,0}, {1,1}}
     };
     std::vector<u_int32_t> indices = {0,1,2,1,2,3};
     Object object4(buffer5, indices, static_cast<u_int32_t>(buffer5.size()), static_cast<u_int32_t>(indices.size()));
     this->objects.add_object(std::move(object4));
 
-    this->point_light_data = {
-        PointLight{.position = {0,-5,0}, .intensity = 12.f, .color = {.1f,.2f,.9f}, .range = 20},
-        PointLight{.position = {0,0,5}, .intensity = 15.f, .color = {1,.2f,.2f}, .range = 15}
-    };
+    //this->point_light_data = {
+    //    PointLight{.position = {0,-5,0}, .intensity = 12.f, .color = {.1f,.2f,.9f}, .range = 20},
+    //    PointLight{.position = {0,0,5}, .intensity = 15.f, .color = {1,.2f,.2f}, .range = 15}
+    //};
+    //this->ubo_data.light_color = {.3,.3,.5};
+    this->point_light_data = { PointLight{.position = {-2,-20,-2}, .intensity = 150, .color = {.9,.85,.75}} };
     this->ubo_data.point_light_count = static_cast<u_int32_t>(this->point_light_data.size());
 }
 

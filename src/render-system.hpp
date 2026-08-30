@@ -33,7 +33,7 @@ class RenderSystem{
       u_int32_t point_light_count;
     };
 
-    RenderSystem(Device& _device, MovementController& _movement_controller, DescriptorManager& _descriptor_manager, 
+    RenderSystem(Device& _device, MovementController& _movement_controller, Descriptors& _descriptor_manager, 
       const u_int32_t _frame_count, int width, int height);
     ~RenderSystem();
 
@@ -55,10 +55,9 @@ class RenderSystem{
     void create_buffer_objects();
 
     u_int32_t frame_count;
-    int first_descriptor_id, layout_id;
     Device& device;
     MovementController& movement_controller;
-    DescriptorManager& descriptor_manager;
+    Descriptors& descriptor_manager;
 
     std::vector<std::unique_ptr<MyBuffer>> vertex_buffers;
     std::vector<std::unique_ptr<MyBuffer>> index_buffers;
@@ -80,7 +79,6 @@ class RenderSystem{
       .light_direction = glm::normalize(glm::vec3{0,-10,-15}),
       .ambient = .02,
       .light_color = {.9f,.9f,.9f},
-      .point_light_count = static_cast<u_int32_t>(this->point_light_data.size())
     };
     std::vector<PointLight> point_light_data;
 };

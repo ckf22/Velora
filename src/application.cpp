@@ -12,17 +12,17 @@ Application::Application(){
     this->create_command_buffers(this->device.get_queue_family());
     this->create_semaphores();
 
-    this->descriptor_manager.create_ressources();
+    this->descriptor_manager.generate_sets();
 
+    //std::cout << "\n\n\n\n\n\ntest\n\n\n\n\n\n" << std::endl;
     this->render_system.allocate_from_descriptor_set();
+    this->textures.allocate_descriptors();
 
     if constexpr (debug)
         std::cout << "\n---------------\nSetup completed\n---------------\n" << std::endl;
 }
 
 Application::~Application(){
-    vkDestroyCommandPool(this->device.get_device(), this->command_pool, VK_NULL_HANDLE);
-
     for(auto& it : this->image_ready_semaphores)
         vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
 
@@ -54,7 +54,7 @@ void Application::run(float fps){
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
         
-        local_semaphore_index = (local_semaphore_index+1) % (int)this->image_aquired_semaphores.size();
+        local_semaphore_index = (local_semaphore_index+1) % static_cast<int>(this->image_aquired_semaphores.size());
         frame_count++;
 
         if( frame_count % 10 == 0 )
@@ -105,22 +105,9 @@ void Application::resize(){
 }
 
 void Application::create_command_buffers(u_int32_t queue_family_index){
-    VkCommandPoolCreateInfo command_pool_ci{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = queue_family_index,
-    };
-
-    if( vkCreateCommandPool(this->device.get_device(), &command_pool_ci, VK_NULL_HANDLE, &this->command_pool) != VK_SUCCESS )
-        throw std::runtime_error("Failed to create command pool");
-
-    if constexpr (debug)
-        std::cout << "Command Pool Created" << std::endl;
-
-
     VkCommandBufferAllocateInfo cmd_buffer_allocate_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = this->command_pool,
+        .commandPool = this->command_pool.get_pool(),
         .commandBufferCount = static_cast<u_int32_t>(this->swapchain.get_image_count()),
     };
 
@@ -259,7 +246,8 @@ void Application::record_command_buffers(){
     vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
     vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.get_pipeline());
-
+    
+    //this->textures.bind_descriptors(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
     this->render_system.populate_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
 
     vkCmdEndRendering(cmd_buffer);
