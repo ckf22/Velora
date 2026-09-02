@@ -54,13 +54,13 @@ class Application{
     Descriptors descriptor_manager{device, swapchain.get_image_count()};
 
     RenderSystem render_system{device, movement_controller, descriptor_manager, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
-    // dont switch this defintion with the one above
+
     TextureManager textures{device, descriptor_manager, const_cast<VkCommandPool&>(command_pool.get_pool()), "./assets/brick-texture.png"};
 
     Pipeline pipeline{
       device, std::vector{this->descriptor_manager.generate_layout()},
       "./shaders/ssbo-3d-shader.vert.spv", "./shaders/texture-shader.frag.spv",
-      VkExtent2D{WIDTH,HEIGHT}, &swapchain.get_image_format(), swapchain.get_depth_format()
+      VkExtent2D{WIDTH,HEIGHT}, swapchain.get_image_format(), swapchain.get_depth_format()
     };
 
 };

@@ -9,7 +9,7 @@
 
 namespace velora{
 
-Pipeline::Pipeline(Device& _device, std::vector<VkDescriptorSetLayout> descriptors, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format) : device{_device} {
+Pipeline::Pipeline(Device& _device, std::vector<VkDescriptorSetLayout> descriptors, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format) : device{_device} {
     this->create_pipeline(vertex_filepath, fragment_filepath, descriptors, _extent, _image_format, _depth_format);
 }
 
@@ -21,7 +21,7 @@ Pipeline::~Pipeline(){
     vkDestroyPipeline(this->device.get_device(), this->pipeline, nullptr);
 }
 
-void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format){
+void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format){
     this->create_shader_module(&this->vertex_shader, vertex_filepath);
     this->create_shader_module(&this->fragment_shader, fragment_filepath);
 
@@ -135,7 +135,7 @@ void Pipeline::create_shader_module(VkShaderModule * target_module, std::string 
         std::cout << "Created Shader Module from file \'" << filepath << '\'' << std::endl;
 }
 
-Pipeline::PipelineConfigInfo Pipeline::get_default_config_info(VkExtent2D _extent, VkFormat * _image_format, VkFormat& _depth_format){
+Pipeline::PipelineConfigInfo Pipeline::get_default_config_info(VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format){
     PipelineConfigInfo ret{};
 
     ret.viewport.x = 0.0f;
@@ -205,7 +205,7 @@ Pipeline::PipelineConfigInfo Pipeline::get_default_config_info(VkExtent2D _exten
 
     ret.rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     ret.rendering_ci.colorAttachmentCount = 1;
-    ret.rendering_ci.pColorAttachmentFormats = _image_format;
+    ret.rendering_ci.pColorAttachmentFormats = &_image_format;
     ret.rendering_ci.depthAttachmentFormat = _depth_format;
 
 

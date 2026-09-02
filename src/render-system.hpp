@@ -77,7 +77,7 @@ class RenderSystem{
     ObjectManager objects{};
     UBO ubo_data{
       .light_direction = glm::normalize(glm::vec3{0,-10,-15}),
-      .ambient = .02,
+      .ambient = .1,
       .light_color = {.9f,.9f,.9f},
     };
     std::vector<PointLight> point_light_data;

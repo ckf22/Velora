@@ -71,9 +71,6 @@ void Application::run(float fps){
             usleep(frame_time_micro_seconds / 10);
         }
 
-        //if constexpr (debug)
-        //    std::cout << "Frame " << frame_count << std::endl;
-
         t0 = std::chrono::high_resolution_clock::now();
     }
     vkDeviceWaitIdle(this->device.get_device());
@@ -246,8 +243,9 @@ void Application::record_command_buffers(){
     vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
     vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.get_pipeline());
+ 
+    this->descriptor_manager.bind_descriptor_set(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
     
-    //this->textures.bind_descriptors(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
     this->render_system.populate_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
 
     vkCmdEndRendering(cmd_buffer);

@@ -22,6 +22,8 @@ class Descriptors{
     Descriptors(const Descriptors&) = delete;
     Descriptors& operator=(const Descriptors&) = delete;
 
+    void bind_descriptor_set(VkCommandBuffer& cmd_buffer, VkPipelineLayout& layout, u_int32_t index);
+
     const u_int32_t get_set_count() const { return this->descriptor_set_count; }
     const VkDescriptorSetLayout& get_layout() const { return layout; }
     const VkDescriptorSet& get_set(u_int32_t index) const { return this->sets[index]; };
@@ -33,8 +35,12 @@ class Descriptors{
     // the .dstSet required in 'VkWriteDescriptorSet' will be populated in the function according to the index
     void allocate_descriptor(VkWriteDescriptorSet write, u_int32_t index);
   private:
-    bool ressources_created = false;
+    void generate_pool();
+
+    int ressources_creation_stage = 0; // 0: nothing has been created; 1 : layout; 2 : pool; 3 : sets;
     const u_int32_t descriptor_set_count;
+    u_int32_t dynamic_descriptor_count = 0;
+
     Device& device;
 
     // For allocation

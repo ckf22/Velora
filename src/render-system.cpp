@@ -78,9 +78,6 @@ void RenderSystem::populate_unique_buffers(VkCommandBuffer& cmd_buffer, u_int32_
 
     dest = this->point_lights_staging[frame_index]->map();
 
-    //u_int32_t point_light_count = static_cast<u_int32_t>(this->point_light_data.size());
-    //memcpy(dest, (void*)&point_light_count, sizeof(u_int32_t));
-    //dest += 4; // Alignment requirenment as specified in 'std430' RAM layout
 
     memcpy(dest, this->point_light_data.data(), this->point_light_data.size()*sizeof(PointLight));
     this->point_lights_staging[frame_index]->unmap();
@@ -95,14 +92,9 @@ void RenderSystem::populate_unique_buffers(VkCommandBuffer& cmd_buffer, u_int32_
 }
 
 void RenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, VkPipelineLayout& pipeline_layout, u_int32_t frame_index){
-
     VkDeviceSize offset{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[frame_index]->get_buffer(), &offset);
     vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[frame_index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
-
-    std::vector<u_int32_t> offsets{0,0,0};
-    vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-        0, 1, &this->descriptor_manager.get_set(frame_index), static_cast<u_int32_t>(offsets.size()), offsets.data());
 
     this->push_constant_ranges(cmd_buffer, pipeline_layout);
 
@@ -220,13 +212,14 @@ void RenderSystem::populate(){
 
     // plane at the bottom
     std::vector<Vertex> buffer5 = {
-        {{-10, 0, -10},{.1f,.9f,.9f}, {0,-1,0}, {0,0}},
-        {{-10, 0, 10},{.9f,.9f,.1f},  {0,-1,0}, {1,0}},
-        {{10, 0, -10},{.9f,.1f,.9f},  {0,-1,0}, {0,1}},
-        {{10, 0, 10},{.1f,.9f,.9f},   {0,-1,0}, {1,1}}
+        {{-5, 0, -5},{.1f,.9f,.9f}, {0,-1,0}, {0,0}},
+        {{-5, 0, 5},{.9f,.9f,.1f},  {0,-1,0}, {1,0}},
+        {{5, 0, -5},{.9f,.1f,.9f},  {0,-1,0}, {0,1}},
+        {{5, 0, 5},{.1f,.9f,.9f},   {0,-1,0}, {1,1}}
     };
     std::vector<u_int32_t> indices = {0,1,2,1,2,3};
     Object object4(buffer5, indices, static_cast<u_int32_t>(buffer5.size()), static_cast<u_int32_t>(indices.size()));
+    object4.get_transforms() = { TransformComponent{}, TransformComponent{{0,0,0}, {1,1,1}, {glm::radians(-30.f),0,0}, {0,0,5}} };
     this->objects.add_object(std::move(object4));
 
     //this->point_light_data = {
