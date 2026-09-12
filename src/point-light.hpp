@@ -13,4 +13,6 @@ struct PointLight{
     float range = 1000;
 };
 
+//class PointLightSystem{};
+
 }

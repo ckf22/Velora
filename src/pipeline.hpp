@@ -7,6 +7,12 @@
 namespace velora{
 
 class Pipeline{
+    #ifdef DEBUG
+    static constexpr bool debug = true;
+    #else
+    static constexpr bool debug = false;
+    #endif
+
     struct PipelineConfigInfo{
       VkViewport viewport;
       VkRect2D scissor;
@@ -20,7 +26,14 @@ class Pipeline{
     };
 
   public:
-    Pipeline(Device& _device, std::vector<VkDescriptorSetLayout> descriptors, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format);
+    Pipeline(
+      Device& _device, std::vector<VkDescriptorSetLayout> descriptors,
+      std::string vertex_filepath, std::string fragment_filepath, 
+      std::vector<VkVertexInputAttributeDescription> attribute_descriptions,
+      std::vector<VkVertexInputBindingDescription> binding_descriptions,
+      VkExtent2D _extent, u_int32_t push_constants_size,
+      VkFormat& _image_format, VkFormat& _depth_format
+    );
     ~Pipeline();
 
     void operator=(const Pipeline&) = delete;
@@ -29,25 +42,28 @@ class Pipeline{
     VkPipelineLayout& get_pipeline_layout() { return pipeline_layout; }
     VkPipeline& get_pipeline() { return pipeline; }
   private:
-    void create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format);
-    void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors);
-    void create_shader_module(VkShaderModule * target_module ,std::string filepath);
+    void create_pipeline(
+      std::string vertex_filepath, std::string fragment_filepath, 
+      std::vector<VkVertexInputAttributeDescription> attribute_descriptions,
+      std::vector<VkVertexInputBindingDescription> binding_descriptions,
+      std::vector<VkDescriptorSetLayout> descriptors,
+      VkExtent2D _extent, u_int32_t push_constants_size,
+      VkFormat& _image_format, VkFormat& _depth_format
+    );
+
+    void create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors, u_int32_t push_constants_size);
+
+    void create_shader_module(VkShaderModule * target_module, std::string filepath);
 
     static std::vector<char> read_file(std::string filename);
     static PipelineConfigInfo get_default_config_info(VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format);
-
-    #ifdef DEBUG
-    static constexpr bool debug = true;
-    #else
-    static constexpr bool debug = false;
-    #endif
 
     Device& device;
 
     VkShaderModule vertex_shader;
     VkShaderModule fragment_shader;
 
-    VkPipelineLayout pipeline_layout{};
+    VkPipelineLayout pipeline_layout;
     VkPipeline pipeline;
 };
 

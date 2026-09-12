@@ -29,6 +29,7 @@ class Descriptors{
     const VkDescriptorSet& get_set(u_int32_t index) const { return this->sets[index]; };
 
     void add_binding(VkDescriptorSetLayoutBinding binding);
+    void set_pNext(void * _pNext);
 
     VkDescriptorSetLayout& generate_layout();
     void generate_sets();
@@ -45,8 +46,8 @@ class Descriptors{
 
     // For allocation
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    std::vector<VkWriteDescriptorSet> allocate_info;
     std::vector<VkDescriptorPoolSize> pool_size;
+    void * pNext = nullptr;
 
     VkDescriptorSetLayout layout;
     std::vector<VkDescriptorSet> sets;

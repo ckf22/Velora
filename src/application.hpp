@@ -2,13 +2,11 @@
 
 #include "window.hpp"
 #include "device.hpp"
-#include "pipeline.hpp"
 #include "swapchain.hpp"
-#include "descriptors.hpp"
-#include "render-system.hpp"
 #include "movement-controller.hpp"
 #include "textures.hpp"
 #include "command-pool.hpp"
+#include "vertex-render-system.hpp"
 
 #include <vector>
 
@@ -28,6 +26,8 @@ class Application{
     void resize(u_int32_t width, u_int32_t height);
   private:
     void resize(); // resizes to current window dimensions
+    void apply_resize_to_camera(VkExtent2D extent);
+
     void create_command_buffers(u_int32_t queue_family_index);
     void create_semaphores();
 
@@ -43,6 +43,7 @@ class Application{
 
     std::vector<VkCommandBuffer> command_buffers;
 
+    Camera camera{};
 
     Window window{"Vulkan Window", WIDTH, HEIGHT};
     MovementController movement_controller{window};
@@ -51,18 +52,8 @@ class Application{
     CommandPool command_pool{device};
 
     SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
-    Descriptors descriptor_manager{device, swapchain.get_image_count()};
 
-    RenderSystem render_system{device, movement_controller, descriptor_manager, static_cast<u_int32_t>(swapchain.get_image_count()), WIDTH, HEIGHT};
-
-    TextureManager textures{device, descriptor_manager, const_cast<VkCommandPool&>(command_pool.get_pool()), "./assets/brick-texture.png"};
-
-    Pipeline pipeline{
-      device, std::vector{this->descriptor_manager.generate_layout()},
-      "./shaders/ssbo-3d-shader.vert.spv", "./shaders/texture-shader.frag.spv",
-      VkExtent2D{WIDTH,HEIGHT}, swapchain.get_image_format(), swapchain.get_depth_format()
-    };
-
+    std::unique_ptr<VertexRenderSystem> vertex_render_system;
 };
 
 }

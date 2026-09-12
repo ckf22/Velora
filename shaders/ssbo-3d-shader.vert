@@ -14,6 +14,7 @@ layout(set = 0, binding = 1, std140) uniform UBO {
     vec3 light_direction;
     float ambient;
     vec3 light_color;
+    uint point_light_count;
 } ubo;
 
 layout(set = 0, binding = 2, std430) readonly buffer WorldSpaceTransforms{

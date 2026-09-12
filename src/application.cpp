@@ -9,14 +9,15 @@
 
 namespace velora {
 Application::Application(){
+    this->vertex_render_system = std::make_unique<VertexRenderSystem>(
+        this->device, this->swapchain.get_image_count(), this->swapchain.get_image_format(),
+        this->swapchain.get_depth_format(), this->swapchain.get_current_extent()
+    );
+
     this->create_command_buffers(this->device.get_queue_family());
     this->create_semaphores();
 
-    this->descriptor_manager.generate_sets();
-
-    //std::cout << "\n\n\n\n\n\ntest\n\n\n\n\n\n" << std::endl;
-    this->render_system.allocate_from_descriptor_set();
-    this->textures.allocate_descriptors();
+    this->apply_resize_to_camera(this->swapchain.get_current_extent());
 
     if constexpr (debug)
         std::cout << "\n---------------\nSetup completed\n---------------\n" << std::endl;
@@ -46,10 +47,20 @@ void Application::run(float fps){
         if(window.was_window_resized()) this->resize();
 
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
-        this->render_system.update_shader_data( std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()-t_u) );
+
+        this->movement_controller.apply_to_camera(this->camera);
+        this->vertex_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
+
+        this->vertex_render_system->update_data(
+            std::chrono::high_resolution_clock::now()-t0,
+            this->swapchain.get_current_index(),
+            frame_count < this->swapchain.get_image_count()
+        );
+        // Argument 3 ensures that all buffer objects are filled for each FRAME_IN_FLIGHT, represented by swapchain.get_image_count()
+
+        // this timestamp is used to update the shader data
         t_u = std::chrono::high_resolution_clock::now();
-        // the second parameter forces the upload of data into all of the seperate (frames_in_flight) buffers
-        this->render_system.upload_shader_data(this->swapchain.get_current_index(), frame_count < this->swapchain.get_image_count());
+        
         this->record_command_buffers();
         this->submit_command_buffers(this->image_aquired_semaphores[local_semaphore_index]);
         this->present_image();
@@ -66,14 +77,19 @@ void Application::run(float fps){
 
         // filling wait time
         while( std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0).count() < frame_time_micro_seconds ){
-            glfwPollEvents();
             // usleep takes microseconds
             usleep(frame_time_micro_seconds / 10);
+            glfwPollEvents();
         }
 
         t0 = std::chrono::high_resolution_clock::now();
     }
     vkDeviceWaitIdle(this->device.get_device());
+}
+
+void Application::apply_resize_to_camera(VkExtent2D extent){
+    auto aspect_ratio = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    this->camera.perspective_projection(.1f, 1000.f, 60, aspect_ratio);
 }
 
 void Application::resize(u_int32_t width, u_int32_t height){
@@ -84,7 +100,7 @@ void Application::resize(u_int32_t width, u_int32_t height){
     this->device.destroy_window_surface();
     this->device.recreate_window_surface();
     this->swapchain.recreate_swapchain({width, height});
-    this->render_system.apply_resize_to_camera(width, height);
+    this->apply_resize_to_camera({width, height});
 }
 
 void Application::resize(){
@@ -96,7 +112,7 @@ void Application::resize(){
     this->device.recreate_window_surface();
     auto new_extent = window.get_window_extent();
     this->swapchain.recreate_swapchain(new_extent);
-    this->render_system.apply_resize_to_camera(new_extent.width, new_extent.height);
+    this->apply_resize_to_camera(new_extent);
 
     this->window.reset_window_resized_flag();
 }
@@ -226,7 +242,8 @@ void Application::record_command_buffers(){
         .pDepthAttachment = &depth_attachment
     };
 
-    this->render_system.populate_unique_buffers(cmd_buffer, index, true);
+    this->vertex_render_system->update_device_local_buffers(cmd_buffer, index);
+    //this->render_system.populate_unique_buffers(cmd_buffer, index, true);
 
     vkCmdBeginRendering(cmd_buffer, &render_info);
 
@@ -242,11 +259,12 @@ void Application::record_command_buffers(){
     VkRect2D scissor{.extent = this->swapchain.get_current_extent()};
     vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
-    vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.get_pipeline());
+    //vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.get_pipeline());
  
-    this->descriptor_manager.bind_descriptor_set(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
-    
-    this->render_system.populate_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
+    //this->descriptor_manager.bind_descriptor_set(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
+
+    //this->render_system.populate_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
+    this->vertex_render_system->populate_command_buffer(cmd_buffer, index);
 
     vkCmdEndRendering(cmd_buffer);
 

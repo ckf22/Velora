@@ -1,6 +1,5 @@
 #include "pipeline.hpp"
 
-#include "render-system.hpp"
 #include "object.hpp"
 
 #include <fstream>
@@ -9,8 +8,15 @@
 
 namespace velora{
 
-Pipeline::Pipeline(Device& _device, std::vector<VkDescriptorSetLayout> descriptors, std::string vertex_filepath, std::string fragment_filepath, VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format) : device{_device} {
-    this->create_pipeline(vertex_filepath, fragment_filepath, descriptors, _extent, _image_format, _depth_format);
+Pipeline::Pipeline(
+  Device& _device, std::vector<VkDescriptorSetLayout> descriptors,
+  std::string vertex_filepath, std::string fragment_filepath,
+  std::vector<VkVertexInputAttributeDescription> attribute_descriptions,
+  std::vector<VkVertexInputBindingDescription> binding_descriptions,
+  VkExtent2D _extent, u_int32_t push_constants_size,
+  VkFormat& _image_format, VkFormat& _depth_format
+) : device{_device} {
+    this->create_pipeline(vertex_filepath, fragment_filepath, attribute_descriptions, binding_descriptions, descriptors, _extent, push_constants_size, _image_format, _depth_format);
 }
 
 Pipeline::~Pipeline(){
@@ -21,7 +27,14 @@ Pipeline::~Pipeline(){
     vkDestroyPipeline(this->device.get_device(), this->pipeline, nullptr);
 }
 
-void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment_filepath, std::vector<VkDescriptorSetLayout> descriptors, VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format){
+void Pipeline::create_pipeline(
+  std::string vertex_filepath, std::string fragment_filepath, 
+  std::vector<VkVertexInputAttributeDescription> attribute_descriptions,
+  std::vector<VkVertexInputBindingDescription> binding_descriptions,
+  std::vector<VkDescriptorSetLayout> descriptors,
+  VkExtent2D _extent, u_int32_t push_constants_size,
+  VkFormat& _image_format, VkFormat& _depth_format
+){
     this->create_shader_module(&this->vertex_shader, vertex_filepath);
     this->create_shader_module(&this->fragment_shader, fragment_filepath);
 
@@ -44,14 +57,12 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
 
     auto config_info = get_default_config_info(_extent, _image_format, _depth_format);
 
-    auto binding_descriptions = Vertex::get_binding_descriptions();
-    auto attrib_descriptions = Vertex::get_attribute_descriptions();
     VkPipelineVertexInputStateCreateInfo vertex_input_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = static_cast<u_int32_t>(binding_descriptions.size()),
         .pVertexBindingDescriptions = binding_descriptions.data(),
-        .vertexAttributeDescriptionCount = static_cast<u_int32_t>(attrib_descriptions.size()),
-        .pVertexAttributeDescriptions = attrib_descriptions.data(),
+        .vertexAttributeDescriptionCount = static_cast<u_int32_t>(attribute_descriptions.size()),
+        .pVertexAttributeDescriptions = attribute_descriptions.data(),
     };
 
     VkPipelineViewportStateCreateInfo viewport_state_ci{
@@ -63,17 +74,17 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
     std::vector<VkDynamicState> dynamic_states{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo dynamic_state_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = 2,
+        .dynamicStateCount = static_cast<u_int32_t>(dynamic_states.size()),
         .pDynamicStates = dynamic_states.data()
     };
 
 
-    this->create_pipeline_layout(descriptors);
+    this->create_pipeline_layout(descriptors, push_constants_size);
 
     VkGraphicsPipelineCreateInfo pipeline_ci{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = &config_info.rendering_ci,
-        .stageCount = 2,
+        .stageCount = static_cast<u_int32_t>(shader_stages.size()),
         .pStages = shader_stages.data(),
         .pVertexInputState = &vertex_input_ci,
         .pInputAssemblyState = &config_info.input_assembly,
@@ -93,11 +104,11 @@ void Pipeline::create_pipeline(std::string vertex_filepath, std::string fragment
         std::cout << "Graphics Pipeline Created" << std::endl;
 }
 
-void Pipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors){
+void Pipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descriptors, u_int32_t push_constants_size){
     VkPushConstantRange push{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(RenderSystem::PushConstantRange),
+        .size = push_constants_size,
     };
 
     VkPipelineLayoutCreateInfo layout_ci{

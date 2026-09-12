@@ -129,17 +129,19 @@ void Device::create_logical_device(){
 
     VkPhysicalDeviceVulkan12Features vk_1_2_features{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .descriptorIndexing = true,
-        .shaderSampledImageArrayNonUniformIndexing = true,
-        .descriptorBindingVariableDescriptorCount = true,
-        .runtimeDescriptorArray = true,
-        .bufferDeviceAddress = true
+        .descriptorIndexing = VK_TRUE,
+        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+        .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+        .descriptorBindingPartiallyBound = VK_TRUE,
+        .descriptorBindingVariableDescriptorCount = VK_TRUE,
+        .runtimeDescriptorArray = VK_TRUE,
+        .bufferDeviceAddress = VK_TRUE,
     };
     VkPhysicalDeviceVulkan13Features vulkan_1_3_features{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .pNext = &vk_1_2_features,
-        .synchronization2 = true,
-        .dynamicRendering = true,
+        .synchronization2 = VK_TRUE,
+        .dynamicRendering = VK_TRUE,
     };
     VkPhysicalDeviceFeatures enabledVk10Features{
         .samplerAnisotropy = VK_TRUE
@@ -181,9 +183,6 @@ bool Device::is_device_suitable(VkPhysicalDevice _device){
         suitability = true;
 
 
-    //if( properties.properties.limits )
-
-
     return suitability;
 }
 
@@ -193,7 +192,6 @@ float Device::rate_device(VkPhysicalDevice _device){
     VkPhysicalDeviceFeatures2 features{ .sType =  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
     vkGetPhysicalDeviceFeatures2(_device, &features);
 
-    properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     float score = 0;
 
     if( properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU )

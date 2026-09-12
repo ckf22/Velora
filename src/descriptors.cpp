@@ -12,10 +12,14 @@ Descriptors::~Descriptors(){
 }
 
 void Descriptors::bind_descriptor_set(VkCommandBuffer& cmd_buffer, VkPipelineLayout& layout, u_int32_t index){
+    if( this->ressources_creation_stage != 3 )
+        throw std::logic_error("Attempt to bind set; Ressources have not been fully created");
+
     std::vector<u_int32_t> offsets(this->dynamic_descriptor_count, 0);
+
     vkCmdBindDescriptorSets(
-        cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1,
-        &this->sets[index], this->dynamic_descriptor_count, offsets.data()
+        cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout,
+        0, 1, &this->sets[index], this->dynamic_descriptor_count, offsets.data()
     );
 }
 
@@ -31,12 +35,18 @@ void Descriptors::add_binding(VkDescriptorSetLayoutBinding binding){
     this->pool_size.push_back({binding.descriptorType, binding.descriptorCount*this->descriptor_set_count});
 }
 
+void Descriptors::set_pNext(void * _pNext){
+    this->pNext = _pNext;
+}
+
+
 VkDescriptorSetLayout& Descriptors::generate_layout(){
     if( this->ressources_creation_stage != 0 )
         throw std::logic_error("Attempted generation of Descriptor Layout failed: Layout has already been created");
 
     VkDescriptorSetLayoutCreateInfo ci{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        //.pNext = this->pNext,
         .bindingCount = static_cast<u_int32_t>(this->bindings.size()),
         .pBindings = this->bindings.data(),
     };

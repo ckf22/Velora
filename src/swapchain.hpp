@@ -32,7 +32,7 @@ class SwapChain{
     VkExtent2D get_current_extent() { return extent; }
     VkFence& get_fence(int i) { return fences[i]; }
     size_t get_current_index() { return current_index; }
-    int get_image_count() { return images.size(); }
+    u_int32_t get_image_count() { return images.size(); }
 
     void wait_for_active_image_fence();
     void aquire_next_image(VkSemaphore& image_ready_semaphore);
@@ -40,8 +40,10 @@ class SwapChain{
     void recreate_swapchain(VkExtent2D new_size);
   private:
     void initialise_swapchain();
+
     void create_swapchain();
     void create_fences(u_int32_t count);
+    // Returns the number of SwapChain Images
     u_int32_t create_image_resources();
     void create_depth_resources(u_int32_t count);
 
