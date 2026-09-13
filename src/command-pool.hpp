@@ -1,8 +1,12 @@
 #pragma once
 
-#include "device.hpp"
+#include <vulkan/vulkan.hpp>
+
+#include <memory>
 
 namespace velora{
+
+class Device;
 
 class CommandPool{
     #ifdef DEBUG
@@ -11,7 +15,7 @@ class CommandPool{
     static constexpr bool debug = false;
     #endif
   public:
-    CommandPool(Device& _device);
+    CommandPool(std::shared_ptr<Device> _device);
     ~CommandPool();
 
     CommandPool& operator=(const CommandPool&) = delete;
@@ -19,7 +23,7 @@ class CommandPool{
 
     const VkCommandPool& get_pool() const { return pool; }
   private:
-    Device& device;
+    std::shared_ptr<Device> device;
 
     VkCommandPool pool;
 };

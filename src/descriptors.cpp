@@ -1,14 +1,17 @@
 #include "descriptors.hpp"
 
+#include "buffer.hpp"
+#include "device.hpp"
+
 #include <iostream>
 #include <stdexcept>
 
 namespace velora{
 
-Descriptors::Descriptors(Device& _device, const u_int32_t _descriptor_set_count) : device{_device}, descriptor_set_count{_descriptor_set_count} {}
+Descriptors::Descriptors(std::shared_ptr<Device> _device, const u_int32_t _descriptor_set_count) : device{_device}, descriptor_set_count{_descriptor_set_count} {}
 Descriptors::~Descriptors(){
-    vkDestroyDescriptorSetLayout(this->device.get_device(), this->layout, nullptr);
-    vkDestroyDescriptorPool(this->device.get_device(), this->pool, nullptr);
+    vkDestroyDescriptorSetLayout(this->device->get_device(), this->layout, nullptr);
+    vkDestroyDescriptorPool(this->device->get_device(), this->pool, nullptr);
 }
 
 void Descriptors::bind_descriptor_set(VkCommandBuffer& cmd_buffer, VkPipelineLayout& layout, u_int32_t index){
@@ -51,7 +54,7 @@ VkDescriptorSetLayout& Descriptors::generate_layout(){
         .pBindings = this->bindings.data(),
     };
 
-    if( vkCreateDescriptorSetLayout(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->layout) != VK_SUCCESS )
+    if( vkCreateDescriptorSetLayout(this->device->get_device(), &ci, VK_NULL_HANDLE, &this->layout) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Descriptor Set Layout");
 
     this->ressources_creation_stage = 1;
@@ -76,7 +79,7 @@ void Descriptors::generate_pool(){
         .pPoolSizes = this->pool_size.data(),
     };
 
-    if( vkCreateDescriptorPool(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->pool) != VK_SUCCESS )
+    if( vkCreateDescriptorPool(this->device->get_device(), &ci, VK_NULL_HANDLE, &this->pool) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Descriptor Pool");
 
     this->ressources_creation_stage = 2;
@@ -95,7 +98,7 @@ void Descriptors::generate_sets(){
 
     this->sets.resize(this->descriptor_set_count);
     for(int i = 0; i < this->descriptor_set_count; ++i)
-        if( vkAllocateDescriptorSets(this->device.get_device(), &alloc, &this->sets[i]) != VK_SUCCESS )
+        if( vkAllocateDescriptorSets(this->device->get_device(), &alloc, &this->sets[i]) != VK_SUCCESS )
             throw std::runtime_error("Failed to allocate Descriptor Set");
 
     this->ressources_creation_stage = 3;
@@ -109,7 +112,7 @@ void Descriptors::allocate_descriptor(VkWriteDescriptorSet write, u_int32_t inde
         throw std::logic_error("Attempted allocation of Descriptor failed: Sets have not been created");
 
     write.dstSet = this->sets.at(index);
-    vkUpdateDescriptorSets(this->device.get_device(), 1, &write, 0, nullptr);
+    vkUpdateDescriptorSets(this->device->get_device(), 1, &write, 0, nullptr);
 }
 
 

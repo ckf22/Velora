@@ -1,12 +1,19 @@
 #include "vertex-render-system.hpp"
 
+#include "device.hpp"
+#include "object.hpp"
+#include "descriptors.hpp"
+#include "object-manager.hpp"
+#include "buffer.hpp"
+#include "pipeline.hpp"
+
 #include <string.h>
 #include <iostream>
 
 namespace velora{
 
 VertexRenderSystem::VertexRenderSystem(
-    Device& _device, u_int32_t frame_count, VkFormat& image_format, VkFormat& depth_format,
+    std::shared_ptr<Device> _device, u_int32_t frame_count, VkFormat& image_format, VkFormat& depth_format,
      VkExtent2D extent
 ) : SubRenderSystem(_device, frame_count) {
 
@@ -95,8 +102,8 @@ void VertexRenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, u_
     this->descriptor_manager->bind_descriptor_set(cmd_buffer, this->pipeline->get_pipeline_layout(), index);
 
     VkDeviceSize offset{0};
-    vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers[index]->get_buffer(), &offset);
-    vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers[index]->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers.at(index)->get_buffer(), &offset);
+    vkCmdBindIndexBuffer(cmd_buffer, this->index_buffers.at(index)->get_buffer(), offset, VK_INDEX_TYPE_UINT32);
 
     // Add Draw Calls
     this->objects->add_draw_calls(cmd_buffer);
@@ -104,34 +111,34 @@ void VertexRenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, u_
 
 void VertexRenderSystem::update_device_local_buffers(VkCommandBuffer& cmd_buffer, u_int32_t buffer_index){
     // UBO
-    memcpy(this->ubo_staging[buffer_index]->map(), &this->ubo_data, sizeof(UBOData));
-    this->ubo_staging[buffer_index]->unmap();
+    memcpy(this->ubo_staging.at(buffer_index)->map(), &this->ubo_data, sizeof(UBOData));
+    this->ubo_staging.at(buffer_index)->unmap();
 
     VkBufferCopy ubo_region{
         .srcOffset = 0,
         .dstOffset = 0,
         .size = sizeof(UBOData),
     };
-    vkCmdCopyBuffer(cmd_buffer, this->ubo_staging[buffer_index]->get_buffer(), this->ubo[buffer_index]->get_buffer(), 1, &ubo_region);
+    vkCmdCopyBuffer(cmd_buffer, this->ubo_staging.at(buffer_index)->get_buffer(), this->ubo.at(buffer_index)->get_buffer(), 1, &ubo_region);
 
 
     // SSBO
-    u_int32_t buffer = this->objects->upload_transforms(this->ssbo_staging[buffer_index]->map(), -1, true);
-    this->ssbo_staging[buffer_index]->unmap();
+    u_int32_t buffer = this->objects->upload_transforms(this->ssbo_staging.at(buffer_index)->map(), -1, true);
+    this->ssbo_staging.at(buffer_index)->unmap();
 
     VkBufferCopy ssbo_region{
         .srcOffset = 0,
         .dstOffset = 0,
         .size = buffer,
     };
-    vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging[buffer_index]->get_buffer(), this->ssbo[buffer_index]->get_buffer(), 1, &ssbo_region);
+    vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging.at(buffer_index)->get_buffer(), this->ssbo.at(buffer_index)->get_buffer(), 1, &ssbo_region);
 }
 
 void VertexRenderSystem::allocate_descriptors(){
     VkDescriptorBufferInfo ubo_info{
         .buffer = nullptr,
         .offset = 0,
-        .range = this->ubo[0]->get_size()
+        .range = VK_WHOLE_SIZE
     };
     VkWriteDescriptorSet write_ubo{
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -144,7 +151,7 @@ void VertexRenderSystem::allocate_descriptors(){
     VkDescriptorBufferInfo ssbo_info{
         .buffer = nullptr,
         .offset = 0,
-        .range = this->ssbo[0]->get_size()
+        .range = VK_WHOLE_SIZE
     };
     VkWriteDescriptorSet write_ssbo{
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -157,7 +164,7 @@ void VertexRenderSystem::allocate_descriptors(){
     VkDescriptorBufferInfo point_light_info{
         .buffer = nullptr,
         .offset = 0,
-        //.range = this->point_light_buffers[0].get_size(),
+        .range = VK_WHOLE_SIZE,
     };
     VkWriteDescriptorSet write_point_light{
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -168,10 +175,8 @@ void VertexRenderSystem::allocate_descriptors(){
     };
 
     for(int i = 0; i < this->frame_count; ++i){
-        ubo_info.buffer = this->ubo[i]->get_buffer();
-        ubo_info.range = this->ubo[i]->get_size();
-        ssbo_info.buffer = this->ssbo[i]->get_buffer();
-        ssbo_info.range = this->ssbo[i]->get_size();
+        ubo_info.buffer = this->ubo.at(i)->get_buffer();
+        ssbo_info.buffer = this->ssbo.at(i)->get_buffer();
         //point_light_info.buffer = this->point_light_buffers[i].get_buffer();
 
         this->descriptor_manager->allocate_descriptor(write_ubo, i);

@@ -12,17 +12,17 @@
 
 namespace velora{
 
-TextureManager::TextureManager(Device& _device, Descriptors& _descriptors, VkCommandPool& cmd_pool, std::string filename) 
- : device{_device}, descriptors{_descriptors} {
+TextureManager::TextureManager(std::shared_ptr<Device> _device, Descriptors& descriptors, VkCommandPool& cmd_pool, std::string filename) 
+ : device{_device}{
     this->load_texture(cmd_pool, filename);
-    this->register_descriptors();
+    this->register_descriptors(descriptors);
 }
 
 TextureManager::~TextureManager(){
-    vkDestroyImageView(this->device.get_device(), this->image_view, VK_NULL_HANDLE);
-    vkDestroyImage(this->device.get_device(), this->texture, VK_NULL_HANDLE);
-    vkFreeMemory(this->device.get_device(), this->texture_ram, VK_NULL_HANDLE);
-    vkDestroySampler(this->device.get_device(), this->sampler, VK_NULL_HANDLE);
+    vkDestroyImageView(this->device->get_device(), this->image_view, VK_NULL_HANDLE);
+    vkDestroyImage(this->device->get_device(), this->texture, VK_NULL_HANDLE);
+    vkFreeMemory(this->device->get_device(), this->texture_ram, VK_NULL_HANDLE);
+    vkDestroySampler(this->device->get_device(), this->sampler, VK_NULL_HANDLE);
 }
 
 void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename){
@@ -64,22 +64,22 @@ void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename)
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
     };
 
-    if( vkCreateImage(this->device.get_device(), &image_ci, VK_NULL_HANDLE, &this->texture) != VK_SUCCESS )
+    if( vkCreateImage(this->device->get_device(), &image_ci, VK_NULL_HANDLE, &this->texture) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Texture Image");
 
     VkMemoryRequirements image_requirements;
-    vkGetImageMemoryRequirements(this->device.get_device(), this->texture, &image_requirements);
+    vkGetImageMemoryRequirements(this->device->get_device(), this->texture, &image_requirements);
 
     VkMemoryAllocateInfo image_alloc_ci{
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = image_requirements.size,
-        .memoryTypeIndex = this->device.find_memory_type(image_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        .memoryTypeIndex = this->device->find_memory_type(image_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
     };
 
-    if( vkAllocateMemory(this->device.get_device(), &image_alloc_ci, VK_NULL_HANDLE, &this->texture_ram) != VK_SUCCESS )
+    if( vkAllocateMemory(this->device->get_device(), &image_alloc_ci, VK_NULL_HANDLE, &this->texture_ram) != VK_SUCCESS )
         throw std::runtime_error("Failed to allocate RAM");
 
-    if( vkBindImageMemory(this->device.get_device(), this->texture, this->texture_ram, 0) != VK_SUCCESS)
+    if( vkBindImageMemory(this->device->get_device(), this->texture, this->texture_ram, 0) != VK_SUCCESS)
         throw std::runtime_error("Failed to bind image RAM");
 
 
@@ -91,7 +91,7 @@ void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename)
         .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = image_ci.mipLevels, .layerCount = 1 }
     };
 
-    if( vkCreateImageView(this->device.get_device(), &image_view_ci, VK_NULL_HANDLE, &this->image_view) != VK_SUCCESS )
+    if( vkCreateImageView(this->device->get_device(), &image_view_ci, VK_NULL_HANDLE, &this->image_view) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Image View");
 
 
@@ -102,7 +102,7 @@ void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename)
         .commandBufferCount = 1
     };
 
-    if( vkAllocateCommandBuffers(this->device.get_device(), &cmd_buffer_alloc, &cmd_buffer) != VK_SUCCESS )
+    if( vkAllocateCommandBuffers(this->device->get_device(), &cmd_buffer_alloc, &cmd_buffer) != VK_SUCCESS )
         throw std::runtime_error("Failed to allocate one-time command buffer");
 
     VkCommandBufferBeginInfo cmd_buffer_begin{
@@ -160,10 +160,10 @@ void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename)
         .pCommandBuffers = &cmd_buffer
     };
 
-    if( vkQueueSubmit(this->device.get_queue(), 1, &submit_info, VK_NULL_HANDLE ) != VK_SUCCESS )
+    if( vkQueueSubmit(this->device->get_queue(), 1, &submit_info, VK_NULL_HANDLE ) != VK_SUCCESS )
         throw std::runtime_error("Failed to submit Queue");
 
-    if( vkQueueWaitIdle(this->device.get_queue()) != VK_SUCCESS )
+    if( vkQueueWaitIdle(this->device->get_queue()) != VK_SUCCESS )
         throw std::runtime_error("Failed to wait for queue");
 
     std::cout << "Image Loaded from file: \'" << filename << "\'("
@@ -191,11 +191,11 @@ void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename)
     sampler_ci.minLod = 0.0f;
     sampler_ci.maxLod = 0.0f;
 
-    if( vkCreateSampler(this->device.get_device(), &sampler_ci, VK_NULL_HANDLE, &this->sampler) )
+    if( vkCreateSampler(this->device->get_device(), &sampler_ci, VK_NULL_HANDLE, &this->sampler) )
         throw std::runtime_error("Failed to Create Sampler");
 }
 
-void TextureManager::allocate_descriptors(){
+void TextureManager::allocate_descriptors(Descriptors& descriptors){
     VkDescriptorImageInfo image_info{
         .sampler = this->sampler,
         .imageView = this->image_view,
@@ -209,12 +209,12 @@ void TextureManager::allocate_descriptors(){
         .pImageInfo = &image_info,
     };
 
-    for(u_int32_t i = 0; i < this->descriptors.get_set_count(); ++i)
-        this->descriptors.allocate_descriptor(write, i);
+    for(u_int32_t i = 0; i < descriptors.get_set_count(); ++i)
+        descriptors.allocate_descriptor(write, i);
 }
 
-void TextureManager::register_descriptors(){
-    this->descriptors.add_binding(
+void TextureManager::register_descriptors(Descriptors& descriptors){
+    descriptors.add_binding(
         VkDescriptorSetLayoutBinding{
             .binding = 4,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,

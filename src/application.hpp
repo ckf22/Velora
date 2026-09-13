@@ -1,16 +1,15 @@
 #pragma once
 
 #include "window.hpp"
-#include "device.hpp"
 #include "swapchain.hpp"
 #include "movement-controller.hpp"
-#include "textures.hpp"
 #include "command-pool.hpp"
-#include "vertex-render-system.hpp"
 
 #include <vector>
 
 namespace velora{
+
+class VertexRenderSystem;
     
 class Application{
     #ifdef DEBUG
@@ -25,7 +24,8 @@ class Application{
     void run(float fps = 60);
     void resize(u_int32_t width, u_int32_t height);
   private:
-    void resize(); // resizes to current window dimensions
+    // resizes to current window dimensions
+    void resize();
     void apply_resize_to_camera(VkExtent2D extent);
 
     void create_command_buffers(u_int32_t queue_family_index);
@@ -46,12 +46,12 @@ class Application{
     Camera camera{};
 
     Window window{"Vulkan Window", WIDTH, HEIGHT};
-    MovementController movement_controller{window};
+    MovementController movement_controller{};
 
-    Device device{window.get_window()};
+    std::shared_ptr<Device> device = std::make_shared<Device>(window.get_window());
     CommandPool command_pool{device};
 
-    SwapChain swapchain{device.get_surface(), device, WIDTH, HEIGHT};
+    SwapChain swapchain{device->get_surface(), device, WIDTH, HEIGHT};
 
     std::unique_ptr<VertexRenderSystem> vertex_render_system;
 };

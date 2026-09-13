@@ -27,7 +27,7 @@ class Pipeline{
 
   public:
     Pipeline(
-      Device& _device, std::vector<VkDescriptorSetLayout> descriptors,
+      std::shared_ptr<Device> _device, std::vector<VkDescriptorSetLayout> descriptors,
       std::string vertex_filepath, std::string fragment_filepath, 
       std::vector<VkVertexInputAttributeDescription> attribute_descriptions,
       std::vector<VkVertexInputBindingDescription> binding_descriptions,
@@ -58,7 +58,7 @@ class Pipeline{
     static std::vector<char> read_file(std::string filename);
     static PipelineConfigInfo get_default_config_info(VkExtent2D _extent, VkFormat& _image_format, VkFormat& _depth_format);
 
-    Device& device;
+    std::shared_ptr<Device> device;
 
     VkShaderModule vertex_shader;
     VkShaderModule fragment_shader;

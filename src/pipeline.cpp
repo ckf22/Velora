@@ -9,7 +9,7 @@
 namespace velora{
 
 Pipeline::Pipeline(
-  Device& _device, std::vector<VkDescriptorSetLayout> descriptors,
+  std::shared_ptr<Device> _device, std::vector<VkDescriptorSetLayout> descriptors,
   std::string vertex_filepath, std::string fragment_filepath,
   std::vector<VkVertexInputAttributeDescription> attribute_descriptions,
   std::vector<VkVertexInputBindingDescription> binding_descriptions,
@@ -20,11 +20,11 @@ Pipeline::Pipeline(
 }
 
 Pipeline::~Pipeline(){
-    vkDestroyShaderModule(this->device.get_device(), this->vertex_shader, nullptr);
-    vkDestroyShaderModule(this->device.get_device(), this->fragment_shader, nullptr);
+    vkDestroyShaderModule(this->device->get_device(), this->vertex_shader, nullptr);
+    vkDestroyShaderModule(this->device->get_device(), this->fragment_shader, nullptr);
 
-    vkDestroyPipelineLayout(this->device.get_device(), this->pipeline_layout, nullptr);
-    vkDestroyPipeline(this->device.get_device(), this->pipeline, nullptr);
+    vkDestroyPipelineLayout(this->device->get_device(), this->pipeline_layout, nullptr);
+    vkDestroyPipeline(this->device->get_device(), this->pipeline, nullptr);
 }
 
 void Pipeline::create_pipeline(
@@ -97,7 +97,7 @@ void Pipeline::create_pipeline(
     };
     pipeline_ci.pDynamicState = &dynamic_state_ci;
 
-    if( vkCreateGraphicsPipelines(this->device.get_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &this->pipeline) != VK_SUCCESS )
+    if( vkCreateGraphicsPipelines(this->device->get_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &this->pipeline) != VK_SUCCESS )
         throw std::runtime_error("Failed to create graphics pipeline");
 
     if constexpr (debug)
@@ -119,7 +119,7 @@ void Pipeline::create_pipeline_layout(std::vector<VkDescriptorSetLayout> descrip
         .pPushConstantRanges = &push,
     };
 
-    if( vkCreatePipelineLayout(this->device.get_device(), &layout_ci, nullptr, &this->pipeline_layout) != VK_SUCCESS )
+    if( vkCreatePipelineLayout(this->device->get_device(), &layout_ci, nullptr, &this->pipeline_layout) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Pipeline Layout");
 
     if constexpr (debug)
@@ -139,7 +139,7 @@ void Pipeline::create_shader_module(VkShaderModule * target_module, std::string 
         .pCode = reinterpret_cast<u_int32_t*>(buffer.data())
     };
 
-    if( vkCreateShaderModule(this->device.get_device(), &ci, nullptr, target_module) != VK_SUCCESS )
+    if( vkCreateShaderModule(this->device->get_device(), &ci, nullptr, target_module) != VK_SUCCESS )
         throw std::runtime_error(std::string("failed to create shader module from file: ")+filepath);
 
     if constexpr (debug)

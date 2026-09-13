@@ -1,12 +1,13 @@
 #pragma once
 
-#include "device.hpp"
-#include "buffer.hpp"
+#include <vulkan/vulkan.hpp>
 
 #include <vector>
 #include <memory>
 
 namespace velora{
+
+class Device;
 
 class Descriptors{
   #ifdef DEBUG
@@ -16,7 +17,7 @@ class Descriptors{
   #endif
   public:
     // it is assumed that one descriptorSet is created per FrameInFlight and that they have the same contents
-    Descriptors(Device& _device, const u_int32_t _descriptor_set_count);
+    Descriptors(std::shared_ptr<Device> _device, const u_int32_t _descriptor_set_count);
     ~Descriptors();
 
     Descriptors(const Descriptors&) = delete;
@@ -42,7 +43,7 @@ class Descriptors{
     const u_int32_t descriptor_set_count;
     u_int32_t dynamic_descriptor_count = 0;
 
-    Device& device;
+    std::shared_ptr<Device> device;
 
     // For allocation
     std::vector<VkDescriptorSetLayoutBinding> bindings;

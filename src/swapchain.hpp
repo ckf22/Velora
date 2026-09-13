@@ -1,9 +1,9 @@
 #pragma once
 
-#include "instance.hpp"
 #include "device.hpp"
 
-
+#include <memory>
+#include <vector>
 
 namespace velora{
 
@@ -16,7 +16,7 @@ class SwapChain{
     const std::vector<VkPresentModeKHR> preffered_present_modes{VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_LATEST_READY_EXT, VK_PRESENT_MODE_MAILBOX_KHR};
     const std::vector<VkFormat> preferred_depth_formats{VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
   public:
-    SwapChain(VkSurfaceKHR& _surface, Device& _device, unsigned int _width, unsigned int _height);
+    SwapChain(VkSurfaceKHR& _surface, std::shared_ptr<Device> _device, unsigned int _width, unsigned int _height);
     ~SwapChain();
 
     void operator=(const SwapChain&) = delete;
@@ -58,7 +58,7 @@ class SwapChain{
     VkPresentModeKHR present_mode;
 
     VkSurfaceKHR& surface;
-    Device& device;
+    std::shared_ptr<Device> device;
 
     VkExtent2D extent;
     VkSwapchainCreateInfoKHR swapchain_ci;

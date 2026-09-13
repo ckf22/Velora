@@ -20,7 +20,7 @@ class VertexRenderSystem : private SubRenderSystem{
   public:
 
     VertexRenderSystem(
-      Device& _device, u_int32_t frame_count, VkFormat& image_format,
+      std::shared_ptr<Device> _device, u_int32_t frame_count, VkFormat& image_format,
       VkFormat& depth_format, VkExtent2D extent
     );
     ~VertexRenderSystem(){}

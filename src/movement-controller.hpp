@@ -1,12 +1,15 @@
 #pragma once
 
-#include "window.hpp"
 #include "camera.hpp"
+
+#include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 
+#include <array>
 #include <vector>
 
 
@@ -29,18 +32,19 @@ class MovementController{
     };
 
   public:
-    MovementController(Window& _window);
+    MovementController();
 
     MovementController(const MovementController&) = delete;
     MovementController& operator=(const MovementController&) = delete;
 
-    void apply_to_camera(Camera& camera);
+    void apply_to_camera(Camera& camera, GLFWwindow& window);
   private:
-    void read_keys();
-    // relative controlls mean that the input(e.g. forward) is applied in the perspective of the camera instead
-    OutputData refine_input(InputData& input, Camera& reference, float vertical_tilt_clamp = glm::radians(85.f), std::vector<bool> relative_controls = {true, false, true});
-
-    Window& window;
+    void read_keys(GLFWwindow& window);
+    // relative controls mean that the input(e.g. forward) is applied in the perspective of the camera instead
+    OutputData refine_input(
+        InputData& input, Camera& reference, float vertical_tilt_clamp = 1.4835298642, // 85 degrees
+        std::array<bool, 3> relative_controls = {true, false, true}
+    );
 
     InputData data;
     std::vector<KeyMapping> key_mappings;

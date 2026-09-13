@@ -2,6 +2,7 @@
 
 namespace velora{
 
+SubRenderSystem::~SubRenderSystem(){}
 
 void SubRenderSystem::create_buffer_objects(u_int32_t buffer_count, u_int32_t vertex_bytes, u_int32_t index_bytes,
                                             u_int32_t ssbo_bytes, u_int32_t ubo_bytes){

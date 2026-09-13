@@ -1,13 +1,18 @@
 #pragma once
 
-#include "device.hpp"
+#include <vulkan/vulkan.hpp>
+
+#include <optional>
+#include <memory>
 
 namespace velora{
+
+class Device;
 
 class MyBuffer{
   public:
     MyBuffer(
-        Device& _device,
+        std::shared_ptr<Device> _device,
         u_int32_t _element_size,
         u_int32_t _element_count,
         VkMemoryPropertyFlags _property_flags,
@@ -33,7 +38,7 @@ class MyBuffer{
         VkBufferUsageFlags usage_flags
     );
 
-    Device& device;
+    std::shared_ptr<Device> device;
 
     u_int32_t element_size;
     u_int32_t element_count;

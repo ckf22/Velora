@@ -1,7 +1,6 @@
 #include "application.hpp"
-#include "window.hpp"
 
-#include <GLFW/glfw3.h>
+#include "vertex-render-system.hpp"
 
 #include <iostream>
 #include <chrono>
@@ -14,7 +13,7 @@ Application::Application(){
         this->swapchain.get_depth_format(), this->swapchain.get_current_extent()
     );
 
-    this->create_command_buffers(this->device.get_queue_family());
+    this->create_command_buffers(this->device->get_queue_family());
     this->create_semaphores();
 
     this->apply_resize_to_camera(this->swapchain.get_current_extent());
@@ -25,10 +24,10 @@ Application::Application(){
 
 Application::~Application(){
     for(auto& it : this->image_ready_semaphores)
-        vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
+        vkDestroySemaphore(this->device->get_device(), it, VK_NULL_HANDLE);
 
     for(auto& it : this->image_aquired_semaphores)
-        vkDestroySemaphore(this->device.get_device(), it, VK_NULL_HANDLE);
+        vkDestroySemaphore(this->device->get_device(), it, VK_NULL_HANDLE);
 }
 
 void Application::run(float fps){
@@ -48,7 +47,8 @@ void Application::run(float fps){
 
         this->swapchain.aquire_next_image(this->image_aquired_semaphores[local_semaphore_index]);
 
-        this->movement_controller.apply_to_camera(this->camera);
+        this->movement_controller.apply_to_camera(this->camera, this->window.get_window());
+
         this->vertex_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
 
         this->vertex_render_system->update_data(
@@ -84,7 +84,7 @@ void Application::run(float fps){
 
         t0 = std::chrono::high_resolution_clock::now();
     }
-    vkDeviceWaitIdle(this->device.get_device());
+    vkDeviceWaitIdle(this->device->get_device());
 }
 
 void Application::apply_resize_to_camera(VkExtent2D extent){
@@ -93,12 +93,12 @@ void Application::apply_resize_to_camera(VkExtent2D extent){
 }
 
 void Application::resize(u_int32_t width, u_int32_t height){
-    vkDeviceWaitIdle(this->device.get_device());
+    vkDeviceWaitIdle(this->device->get_device());
 
     glfwSetWindowSize(&this->window.get_window(), width, height);
-    vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
-    this->device.destroy_window_surface();
-    this->device.recreate_window_surface();
+    vkDestroySwapchainKHR(this->device->get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
+    this->device->destroy_window_surface();
+    this->device->recreate_window_surface();
     this->swapchain.recreate_swapchain({width, height});
     this->apply_resize_to_camera({width, height});
 }
@@ -106,10 +106,10 @@ void Application::resize(u_int32_t width, u_int32_t height){
 void Application::resize(){
     if( !this->window.was_window_resized() ) return;
 
-    vkDeviceWaitIdle(this->device.get_device());
-    vkDestroySwapchainKHR(this->device.get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
-    this->device.destroy_window_surface();
-    this->device.recreate_window_surface();
+    vkDeviceWaitIdle(this->device->get_device());
+    vkDestroySwapchainKHR(this->device->get_device(), this->swapchain.get_swapchain(), VK_NULL_HANDLE);
+    this->device->destroy_window_surface();
+    this->device->recreate_window_surface();
     auto new_extent = window.get_window_extent();
     this->swapchain.recreate_swapchain(new_extent);
     this->apply_resize_to_camera(new_extent);
@@ -125,7 +125,7 @@ void Application::create_command_buffers(u_int32_t queue_family_index){
     };
 
     this->command_buffers.resize(this->swapchain.get_image_count());
-    if( vkAllocateCommandBuffers(this->device.get_device(), &cmd_buffer_allocate_info, this->command_buffers.data()) != VK_SUCCESS )
+    if( vkAllocateCommandBuffers(this->device->get_device(), &cmd_buffer_allocate_info, this->command_buffers.data()) != VK_SUCCESS )
         throw std::runtime_error("Failed to allocate Command Buffers");
 
     if constexpr (debug)
@@ -141,8 +141,8 @@ void Application::create_semaphores(){
     this->image_aquired_semaphores.resize(this->swapchain.get_image_count());
 
     for(int i = 0; i < this->swapchain.get_image_count(); ++i)
-        if( vkCreateSemaphore(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->image_ready_semaphores[i]) != VK_SUCCESS 
-         || vkCreateSemaphore(this->device.get_device(), &ci, VK_NULL_HANDLE, &this->image_aquired_semaphores[i]) != VK_SUCCESS )
+        if( vkCreateSemaphore(this->device->get_device(), &ci, VK_NULL_HANDLE, &this->image_ready_semaphores[i]) != VK_SUCCESS 
+         || vkCreateSemaphore(this->device->get_device(), &ci, VK_NULL_HANDLE, &this->image_aquired_semaphores[i]) != VK_SUCCESS )
             throw std::runtime_error(std::string("Failed to create Semaphores at index ")+std::to_string(i));
 
     if constexpr (debug)
@@ -161,7 +161,7 @@ void Application::present_image(){
         .pImageIndices = &buffer
     };
     
-    auto result = vkQueuePresentKHR(this->device.get_queue(), &present_info);
+    auto result = vkQueuePresentKHR(this->device->get_queue(), &present_info);
     if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         throw std::runtime_error("Failed to present image");
 
@@ -303,7 +303,7 @@ void Application::submit_command_buffers(VkSemaphore& image_aquired_semaphore){
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &this->image_ready_semaphores[index],
     };
-    vkQueueSubmit(this->device.get_queue(), 1, &submit_info, this->swapchain.get_fence(index));
+    vkQueueSubmit(this->device->get_queue(), 1, &submit_info, this->swapchain.get_fence(index));
 }
 
 } // namespace velora

@@ -1,18 +1,18 @@
 #pragma once
 
-#include "movement-controller.hpp"
-#include "descriptors.hpp"
-#include "device.hpp"
-#include "object-manager.hpp"
 #include "buffer.hpp"
+#include "descriptors.hpp"
+#include "object-manager.hpp"
 #include "pipeline.hpp"
+#include "device.hpp"
 
 #define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
+#include <glm/mat4x4.hpp>
 
 #include <chrono>
 #include <memory>
 #include <vector>
+
 
 namespace velora{
 
@@ -30,7 +30,8 @@ class SubRenderSystem{
     struct PushConstantsData;
     struct UBOData;
 
-    SubRenderSystem(Device& _device, const u_int32_t _frame_count) : device{_device}, frame_count{_frame_count} {}
+    SubRenderSystem(std::shared_ptr<Device> _device, const u_int32_t _frame_count) : device{_device}, frame_count{_frame_count} {}
+    ~SubRenderSystem();
 
     SubRenderSystem(const SubRenderSystem&) = delete;
     SubRenderSystem& operator=(const SubRenderSystem&) = delete;
@@ -60,7 +61,7 @@ class SubRenderSystem{
 
     virtual void create_buffer_objects(u_int32_t buffer_count, u_int32_t vertex_bytes, u_int32_t index_bytes, u_int32_t ssbo_bytes, u_int32_t ubo_bytes);
 
-    Device& device;
+    std::shared_ptr<Device> device;
     const u_int32_t frame_count;
 
     std::unique_ptr<Descriptors> descriptor_manager;

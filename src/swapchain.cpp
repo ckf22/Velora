@@ -1,22 +1,22 @@
 #include "swapchain.hpp"
- 
+
 #include <iostream>
 #include <string>
 #include <stdexcept>
 
 namespace velora{
 
-SwapChain::SwapChain(VkSurfaceKHR& _surface, Device& _device, unsigned int _width = 800, unsigned int _height = 600)
+SwapChain::SwapChain(VkSurfaceKHR& _surface, std::shared_ptr<Device> _device, unsigned int _width = 800, unsigned int _height = 600)
  : surface{_surface}, device{_device} {
     this->extent = VkExtent2D{.width = _width, .height = _height};
     this->initialise_swapchain();
 }
 
 SwapChain::~SwapChain(){
-    vkDestroySwapchainKHR(this->device.get_device(), this->swapchain, nullptr);
+    vkDestroySwapchainKHR(this->device->get_device(), this->swapchain, nullptr);
 
     for(auto& it : this->fences)
-        vkDestroyFence(this->device.get_device(), it, nullptr);
+        vkDestroyFence(this->device->get_device(), it, nullptr);
 
 
     this->delete_image_resources();
@@ -24,21 +24,21 @@ SwapChain::~SwapChain(){
 
 void SwapChain::delete_image_resources(){
     for(auto& it : this->image_views)
-        vkDestroyImageView(this->device.get_device(), it, nullptr);
+        vkDestroyImageView(this->device->get_device(), it, nullptr);
 
     for(auto& it : this->depth_image_views)
-        vkDestroyImageView(this->device.get_device(), it, nullptr);
+        vkDestroyImageView(this->device->get_device(), it, nullptr);
 
     for(auto& it : this->depth_images)
-        vkDestroyImage(this->device.get_device(), it, nullptr);
+        vkDestroyImage(this->device->get_device(), it, nullptr);
 
     for(auto& it : this->depth_image_ram)
-        vkFreeMemory(this->device.get_device(), it, nullptr);
+        vkFreeMemory(this->device->get_device(), it, nullptr);
 }
 
 void SwapChain::aquire_next_image(VkSemaphore& image_ready_semaphore){
     u_int32_t i{};
-    auto result = vkAcquireNextImageKHR(this->device.get_device(), this->swapchain, UINT64_MAX, image_ready_semaphore, VK_NULL_HANDLE, &i);
+    auto result = vkAcquireNextImageKHR(this->device->get_device(), this->swapchain, UINT64_MAX, image_ready_semaphore, VK_NULL_HANDLE, &i);
     if( result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR )
         throw std::runtime_error("Failed to Aquire Next Image");
 
@@ -46,9 +46,9 @@ void SwapChain::aquire_next_image(VkSemaphore& image_ready_semaphore){
 }
 
 void SwapChain::wait_for_active_image_fence(){
-    if( vkWaitForFences(this->device.get_device(), 1, &this->fences[this->current_index], true, UINT64_MAX) != VK_SUCCESS )
+    if( vkWaitForFences(this->device->get_device(), 1, &this->fences[this->current_index], true, UINT64_MAX) != VK_SUCCESS )
         throw std::runtime_error(std::string("Failed to wait on Fence; index ")+std::to_string(this->current_index));
-    if( vkResetFences(this->device.get_device(), 1, &this->fences[this->current_index]) != VK_SUCCESS )
+    if( vkResetFences(this->device->get_device(), 1, &this->fences[this->current_index]) != VK_SUCCESS )
         throw std::runtime_error(std::string("Failed to reset Fence; index ")+std::to_string(this->current_index));
 }
 
@@ -85,7 +85,7 @@ void SwapChain::initialise_swapchain() {
 
 void SwapChain::create_swapchain(){
     VkSurfaceCapabilitiesKHR capabilities{};
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->device.get_physical_device(), this->surface, &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->device->get_physical_device(), this->surface, &capabilities);
 
     this->choose_format(this->surface, capabilities);
     this->choose_depth_format();
@@ -105,19 +105,19 @@ void SwapChain::create_swapchain(){
         .presentMode = this->present_mode
     };
 
-    if( vkCreateSwapchainKHR(this->device.get_device(), &this->swapchain_ci, nullptr, &this->swapchain) != VK_SUCCESS )
+    if( vkCreateSwapchainKHR(this->device->get_device(), &this->swapchain_ci, nullptr, &this->swapchain) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Swapchain");
 }
 
 u_int32_t SwapChain::create_image_resources(){
     u_int32_t count{};
-    vkGetSwapchainImagesKHR(this->device.get_device(), this->swapchain, &count, nullptr);
+    vkGetSwapchainImagesKHR(this->device->get_device(), this->swapchain, &count, nullptr);
 
     if( count == 0 )
         throw std::runtime_error("No Swapchain images found");
 
     this->images.resize(count);
-    vkGetSwapchainImagesKHR(this->device.get_device(), this->swapchain, &count, this->images.data());
+    vkGetSwapchainImagesKHR(this->device->get_device(), this->swapchain, &count, this->images.data());
 
     this->image_views.resize(count);
     for(int i = 0; i < count; ++i){
@@ -128,7 +128,7 @@ u_int32_t SwapChain::create_image_resources(){
             .format = this->image_format,
             .subresourceRange{ .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 },
         };
-        if( vkCreateImageView(this->device.get_device(), &image_view_ci, VK_NULL_HANDLE, &this->image_views[i]) != VK_SUCCESS)
+        if( vkCreateImageView(this->device->get_device(), &image_view_ci, VK_NULL_HANDLE, &this->image_views[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Image View at index ")+std::to_string(i));
     }
 
@@ -151,7 +151,7 @@ void SwapChain::create_depth_resources(u_int32_t count){
 
     this->depth_images.resize(count);
     for(int i = 0; i < count; ++i){
-        if(vkCreateImage(this->device.get_device(), &depth_image_ci, nullptr, &this->depth_images[i]) != VK_SUCCESS)
+        if(vkCreateImage(this->device->get_device(), &depth_image_ci, nullptr, &this->depth_images[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Depth Image at index ")+std::to_string(i));
     }
 
@@ -166,15 +166,15 @@ void SwapChain::create_depth_resources(u_int32_t count){
             .subresourceRange{ .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1 },
         };
         VkMemoryRequirements ram_requirements{};
-        vkGetImageMemoryRequirements(this->device.get_device(), this->depth_images[i], &ram_requirements);
+        vkGetImageMemoryRequirements(this->device->get_device(), this->depth_images[i], &ram_requirements);
         VkMemoryAllocateInfo alloc_info{
             .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
             .allocationSize = ram_requirements.size,
             .memoryTypeIndex = 0
         };
-        vkAllocateMemory(this->device.get_device(), &alloc_info, VK_NULL_HANDLE, &this->depth_image_ram[i]);
-        vkBindImageMemory(this->device.get_device(), this->depth_images[i], this->depth_image_ram[i], 0);
-        if(vkCreateImageView(this->device.get_device(), &depth_image_view_ci, nullptr, &this->depth_image_views[i]) != VK_SUCCESS)
+        vkAllocateMemory(this->device->get_device(), &alloc_info, VK_NULL_HANDLE, &this->depth_image_ram[i]);
+        vkBindImageMemory(this->device->get_device(), this->depth_images[i], this->depth_image_ram[i], 0);
+        if(vkCreateImageView(this->device->get_device(), &depth_image_view_ci, nullptr, &this->depth_image_views[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Depth Image View at index ")+std::to_string(i));
     }
 
@@ -188,7 +188,7 @@ void SwapChain::create_fences(u_int32_t count){
 
     this->fences.resize(count);
     for(int i = 0; i < count; ++i){
-        if(vkCreateFence(this->device.get_device(), &fence_ci, VK_NULL_HANDLE, &this->fences[i]) != VK_SUCCESS)
+        if(vkCreateFence(this->device->get_device(), &fence_ci, VK_NULL_HANDLE, &this->fences[i]) != VK_SUCCESS)
             throw std::runtime_error(std::string("Failed to create Fence at index ")+std::to_string(i));
         fence_ci.flags = 0; // only the first fence needs to be signalled due to the render loop
     }
@@ -197,13 +197,13 @@ void SwapChain::create_fences(u_int32_t count){
 
 VkFormat SwapChain::choose_format(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities){
     u_int32_t count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(this->device.get_physical_device(), _surface, &count, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(this->device->get_physical_device(), _surface, &count, nullptr);
 
     if(count == 0)
         throw std::runtime_error("No Surface Formats");
 
     std::vector<VkSurfaceFormatKHR> availible(count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(this->device.get_physical_device(), _surface, &count, availible.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(this->device->get_physical_device(), _surface, &count, availible.data());
 
     std::optional<VkFormat> format;
     for(auto& it : availible){
@@ -224,7 +224,7 @@ VkFormat SwapChain::choose_depth_format(){
     VkFormatProperties2 formatProperties{};
     for(auto& it : this->preferred_depth_formats){
         formatProperties = VkFormatProperties2{ .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        vkGetPhysicalDeviceFormatProperties2(this->device.get_physical_device(), it, &formatProperties);
+        vkGetPhysicalDeviceFormatProperties2(this->device->get_physical_device(), it, &formatProperties);
         if (formatProperties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
             format = it;
             break;
@@ -240,13 +240,13 @@ VkFormat SwapChain::choose_depth_format(){
 
 VkPresentModeKHR SwapChain::choose_present_mode(VkSurfaceKHR& _surface, VkSurfaceCapabilitiesKHR capabilities){
     u_int32_t count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(this->device.get_physical_device(), _surface, &count, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(this->device->get_physical_device(), _surface, &count, nullptr);
 
     if( count == 0 )
         throw std::runtime_error("No Present Modes are Supported");
 
     std::vector<VkPresentModeKHR> availible(count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(this->device.get_physical_device(), _surface, &count, availible.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(this->device->get_physical_device(), _surface, &count, availible.data());
 
     std::optional<VkPresentModeKHR> present_mode;
     for(auto& it : this->preffered_present_modes){

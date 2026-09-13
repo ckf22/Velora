@@ -6,7 +6,7 @@
 
 namespace velora{
 
-MovementController::MovementController(Window& _window) : window{_window} {
+MovementController::MovementController(){
     this->key_mappings = {
         // moving
         {GLFW_KEY_A, &this->data.position_dn.x},
@@ -24,23 +24,23 @@ MovementController::MovementController(Window& _window) : window{_window} {
     };
 }
 
-void MovementController::read_keys(){
+void MovementController::read_keys(GLFWwindow& window){
     glfwPollEvents();
     for(auto& it : this->key_mappings){
-        if( glfwGetKey(&this->window.get_window(), it.address) == GLFW_PRESS)
+        if( glfwGetKey(&window, it.address) == GLFW_PRESS)
             *it.value_ptr += 1.f;
     }
 }
 
-void MovementController::apply_to_camera(Camera& camera){
+void MovementController::apply_to_camera(Camera& camera, GLFWwindow& window){
     this->data = InputData{};
-    this->read_keys();
+    this->read_keys(window);
 
     auto new_camera_data = this->refine_input(this->data, camera, glm::radians(85.f), {true,false,true});
     camera.view_angles( new_camera_data.position, new_camera_data.rotation );
 }
 
-MovementController::OutputData MovementController::refine_input(InputData& input, Camera& reference, float vertical_tilt_clamp, std::vector<bool> relative_controls){
+MovementController::OutputData MovementController::refine_input(InputData& input, Camera& reference, float vertical_tilt_clamp, std::array<bool, 3> relative_controls){
     glm::vec2 turning = ( this->data.rotation_dp-this->data.rotation_dn ) * glm::vec2{.01f};
     turning.y = glm::mod(turning.y + reference.rotation.y, glm::two_pi<float>());
     turning.x = glm::clamp(turning.x + reference.rotation.x, -vertical_tilt_clamp, vertical_tilt_clamp);
