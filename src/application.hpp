@@ -4,12 +4,12 @@
 #include "swapchain.hpp"
 #include "movement-controller.hpp"
 #include "command-pool.hpp"
+#include "vertex-render-system.hpp"
+#include "point-light-system.hpp"
 
 #include <vector>
 
 namespace velora{
-
-class VertexRenderSystem;
     
 class Application{
     #ifdef DEBUG
@@ -49,9 +49,12 @@ class Application{
     MovementController movement_controller{};
 
     std::shared_ptr<Device> device = std::make_shared<Device>(window.get_window());
+
     CommandPool command_pool{device};
 
     SwapChain swapchain{device->get_surface(), device, WIDTH, HEIGHT};
+
+    std::shared_ptr<PointLightSystem> point_light_system = std::make_shared<PointLightSystem>(device, 100, this->swapchain.get_image_count());
 
     std::unique_ptr<VertexRenderSystem> vertex_render_system;
 };

@@ -8,7 +8,8 @@
 
 namespace velora{
 
-Descriptors::Descriptors(std::shared_ptr<Device> _device, const u_int32_t _descriptor_set_count) : device{_device}, descriptor_set_count{_descriptor_set_count} {}
+Descriptors::Descriptors(std::shared_ptr<Device> _device, const u_int32_t _descriptor_set_count, const u_int32_t _set_index)
+ : device{_device}, descriptor_set_count{_descriptor_set_count}, set_index{_set_index} {}
 Descriptors::~Descriptors(){
     vkDestroyDescriptorSetLayout(this->device->get_device(), this->layout, nullptr);
     vkDestroyDescriptorPool(this->device->get_device(), this->pool, nullptr);
@@ -22,7 +23,7 @@ void Descriptors::bind_descriptor_set(VkCommandBuffer& cmd_buffer, VkPipelineLay
 
     vkCmdBindDescriptorSets(
         cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout,
-        0, 1, &this->sets[index], this->dynamic_descriptor_count, offsets.data()
+        this->set_index, 1, &this->sets[index], this->dynamic_descriptor_count, offsets.data()
     );
 }
 

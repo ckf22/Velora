@@ -1,16 +1,23 @@
 #include "application.hpp"
 
-#include "vertex-render-system.hpp"
-
 #include <iostream>
 #include <chrono>
 #include <unistd.h>
 
 namespace velora {
 Application::Application(){
+    this->point_light_system->get_point_lights() = std::vector<PointLight>({
+        PointLight{
+            .position = {0, -8, 8},
+            .intensity = 300,
+            .color = {.3f,.45f,.9f},
+            .range = 100
+        }
+    });
+
     this->vertex_render_system = std::make_unique<VertexRenderSystem>(
         this->device, this->swapchain.get_image_count(), this->swapchain.get_image_format(),
-        this->swapchain.get_depth_format(), this->swapchain.get_current_extent()
+        this->swapchain.get_depth_format(), this->swapchain.get_current_extent(), this->point_light_system
     );
 
     this->create_command_buffers(this->device->get_queue_family());
@@ -243,6 +250,7 @@ void Application::record_command_buffers(){
     };
 
     this->vertex_render_system->update_device_local_buffers(cmd_buffer, index);
+    this->point_light_system->upload_to_buffer(cmd_buffer, index);
     //this->render_system.populate_unique_buffers(cmd_buffer, index, true);
 
     vkCmdBeginRendering(cmd_buffer, &render_info);

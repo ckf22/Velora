@@ -16,8 +16,9 @@ class Descriptors{
   static constexpr bool debug = false;
   #endif
   public:
-    // it is assumed that one descriptorSet is created per FrameInFlight and that they have the same contents
-    Descriptors(std::shared_ptr<Device> _device, const u_int32_t _descriptor_set_count);
+    // it is assumed that one descriptorSet is created per FrameInFlight, they have the same contents 
+    // and the described items in the shader share the 'layout(set = <_set_index>)'-qualifier in the glsl shader
+    Descriptors(std::shared_ptr<Device> _device, const u_int32_t _descriptor_set_count, const u_int32_t _set_index);
     ~Descriptors();
 
     Descriptors(const Descriptors&) = delete;
@@ -41,6 +42,8 @@ class Descriptors{
 
     int ressources_creation_stage = 0; // 0: nothing has been created; 1 : layout; 2 : pool; 3 : sets;
     const u_int32_t descriptor_set_count;
+    // 'set_index' describes what "number" this set will be referenced by in the shader(glsl): layout(...., set = <set_index>)...
+    const u_int32_t set_index;
     u_int32_t dynamic_descriptor_count = 0;
 
     std::shared_ptr<Device> device;

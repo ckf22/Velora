@@ -20,7 +20,7 @@ struct PointLightInformation{
     float range;
 };
 
-layout(set = 0, binding = 3, std430) readonly buffer PointLights{
+layout(set = 1, binding = 3, std430) readonly buffer PointLights{
     PointLightInformation point_lights[];
 };
 

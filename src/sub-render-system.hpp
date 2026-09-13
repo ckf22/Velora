@@ -37,7 +37,6 @@ class SubRenderSystem{
     SubRenderSystem& operator=(const SubRenderSystem&) = delete;
 
     virtual void update_projection_matrix(const glm::mat4& projection) = 0;
-    virtual void update_point_light_count(u_int32_t count) = 0;
 
     // Only run after Descriptor Sets have been created
     virtual void allocate_descriptors() = 0;
