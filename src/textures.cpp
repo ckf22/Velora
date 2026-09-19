@@ -12,7 +12,7 @@
 
 namespace velora{
 
-TextureManager::TextureManager(std::shared_ptr<Device> _device, Descriptors& descriptors, VkCommandPool& cmd_pool, std::string filename) 
+TextureManager::TextureManager(std::shared_ptr<Device> _device, Descriptors& descriptors, const VkCommandPool& cmd_pool, std::string filename) 
  : device{_device}{
     this->load_texture(cmd_pool, filename);
     this->register_descriptors(descriptors);
@@ -25,7 +25,7 @@ TextureManager::~TextureManager(){
     vkDestroySampler(this->device->get_device(), this->sampler, VK_NULL_HANDLE);
 }
 
-void TextureManager::load_texture(VkCommandPool& cmd_pool, std::string filename){
+void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string filename){
     auto t0 = std::chrono::high_resolution_clock::now();
 
     int width, height, channels;

@@ -7,7 +7,7 @@ namespace velora{
 
 class TextureManager{
   public:
-    TextureManager(std::shared_ptr<Device> _device, Descriptors& descriptors, VkCommandPool& cmd_pool, std::string filename);
+    TextureManager(std::shared_ptr<Device> _device, Descriptors& descriptors, const VkCommandPool& cmd_pool, std::string filename);
     ~TextureManager();
 
     TextureManager(const TextureManager&) = delete;
@@ -18,7 +18,7 @@ class TextureManager{
     VkSampler& get_sampler() { return sampler; }
     void allocate_descriptors(Descriptors& descriptors);
   private:
-    void load_texture(VkCommandPool& cmd_pool, std::string filename);
+    void load_texture(const VkCommandPool& cmd_pool, std::string filename);
     void register_descriptors(Descriptors& descriptors);
 
     std::shared_ptr<Device> device;

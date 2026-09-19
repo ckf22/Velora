@@ -8,6 +8,11 @@ layout(location = 3) in vec2 uv_in;
 
 layout(location = 0) out vec4 result;
 
+layout(push_constant) uniform Push{
+    mat4 projection;
+    uint texture_layer;
+} push;
+
 layout(set = 0, binding = 1, std140) uniform UBO {
     vec3 light_direction;
     float ambient;
@@ -22,11 +27,11 @@ struct PointLightInformation{
     float range;
 };
 
-layout(set = 0, binding = 3, std430) readonly buffer PointLights{
+layout(set = 1, binding = 0, std430) readonly buffer PointLights{
     PointLightInformation point_lights[];
 };
 
-layout(binding = 4) uniform sampler2D textures;
+layout(set = 0, binding = 4) uniform sampler2D textures;
 
 void main(){
     vec3 normal = normalize(normal_in);

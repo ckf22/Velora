@@ -5,6 +5,7 @@
 #include "movement-controller.hpp"
 #include "command-pool.hpp"
 #include "vertex-render-system.hpp"
+#include "texture-render-system.hpp"
 #include "point-light-system.hpp"
 
 #include <vector>
@@ -57,6 +58,8 @@ class Application{
     std::shared_ptr<PointLightSystem> point_light_system = std::make_shared<PointLightSystem>(device, 100, this->swapchain.get_image_count());
 
     std::unique_ptr<VertexRenderSystem> vertex_render_system;
+
+    std::unique_ptr<TextureRenderSystem> texture_render_system;
 };
 
 }

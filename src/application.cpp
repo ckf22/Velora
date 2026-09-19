@@ -8,16 +8,22 @@ namespace velora {
 Application::Application(){
     this->point_light_system->get_point_lights() = std::vector<PointLight>({
         PointLight{
-            .position = {0, -8, 8},
-            .intensity = 300,
+            .position = {0, -4, 0},
+            .intensity = 100,
             .color = {.3f,.45f,.9f},
-            .range = 100
+            .range = 6
         }
     });
 
     this->vertex_render_system = std::make_unique<VertexRenderSystem>(
         this->device, this->swapchain.get_image_count(), this->swapchain.get_image_format(),
         this->swapchain.get_depth_format(), this->swapchain.get_current_extent(), this->point_light_system
+    );
+
+    this->texture_render_system = std::make_unique<TextureRenderSystem>(
+        this->device, this->point_light_system, this->command_pool.get_pool(),
+        this->swapchain.get_image_format(), this->swapchain.get_depth_format(),
+        this->swapchain.get_current_extent(),  this->swapchain.get_image_count()
     );
 
     this->create_command_buffers(this->device->get_queue_family());
@@ -57,8 +63,14 @@ void Application::run(float fps){
         this->movement_controller.apply_to_camera(this->camera, this->window.get_window());
 
         this->vertex_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
+        this->texture_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
 
         this->vertex_render_system->update_data(
+            std::chrono::high_resolution_clock::now()-t0,
+            this->swapchain.get_current_index(),
+            frame_count < this->swapchain.get_image_count()
+        );
+        this->texture_render_system->update_data(
             std::chrono::high_resolution_clock::now()-t0,
             this->swapchain.get_current_index(),
             frame_count < this->swapchain.get_image_count()
@@ -250,6 +262,7 @@ void Application::record_command_buffers(){
     };
 
     this->vertex_render_system->update_device_local_buffers(cmd_buffer, index);
+    this->texture_render_system->update_device_local_buffers(cmd_buffer, index);
     this->point_light_system->upload_to_buffer(cmd_buffer, index);
     //this->render_system.populate_unique_buffers(cmd_buffer, index, true);
 
@@ -267,12 +280,8 @@ void Application::record_command_buffers(){
     VkRect2D scissor{.extent = this->swapchain.get_current_extent()};
     vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
-    //vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.get_pipeline());
- 
-    //this->descriptor_manager.bind_descriptor_set(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
-
-    //this->render_system.populate_command_buffer(cmd_buffer, this->pipeline.get_pipeline_layout(), index);
     this->vertex_render_system->populate_command_buffer(cmd_buffer, index);
+    this->texture_render_system->populate_command_buffer(cmd_buffer, index);
 
     vkCmdEndRendering(cmd_buffer);
 

@@ -160,27 +160,13 @@ void VertexRenderSystem::allocate_descriptors(){
         .pBufferInfo = &ssbo_info,
     };
 
-    VkDescriptorBufferInfo point_light_info{
-        .buffer = nullptr,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE,
-    };
-    VkWriteDescriptorSet write_point_light{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = 3,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        .pBufferInfo = &point_light_info,
-    };
 
     for(int i = 0; i < this->frame_count; ++i){
         ubo_info.buffer = this->ubo.at(i)->get_buffer();
         ssbo_info.buffer = this->ssbo.at(i)->get_buffer();
-        //point_light_info.buffer = this->point_light_buffers[i].get_buffer();
 
         this->descriptor_manager->allocate_descriptor(write_ubo, i);
         this->descriptor_manager->allocate_descriptor(write_ssbo, i);
-        //this->descriptor_manager->allocate_descriptor(write_point_light, i);
     }
 }
 

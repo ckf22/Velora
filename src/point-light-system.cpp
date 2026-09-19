@@ -25,7 +25,7 @@ PointLightSystem::PointLightSystem(std::shared_ptr<Device> _device, const unsign
 
     this->descriptors->add_binding(
         VkDescriptorSetLayoutBinding{
-            .binding = 3,
+            .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
@@ -43,7 +43,7 @@ PointLightSystem::PointLightSystem(std::shared_ptr<Device> _device, const unsign
     };
     VkWriteDescriptorSet write{
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = 3,
+        .dstBinding = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
         .pBufferInfo = &buffer_info,
