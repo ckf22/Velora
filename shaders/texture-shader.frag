@@ -31,12 +31,12 @@ layout(set = 1, binding = 0, std430) readonly buffer PointLights{
     PointLightInformation point_lights[];
 };
 
-layout(set = 0, binding = 4) uniform sampler2D textures;
+layout(set = 2, binding = 0) uniform sampler2D textures[];
 
 void main(){
     vec3 normal = normalize(normal_in);
 
-    vec3 texture_color = texture(textures, uv_in).xyz; 
+    vec3 texture_color = texture(textures[nonuniformEXT(push.texture_layer)], uv_in).xyz; 
 
     // directional light
     vec3 running_sum = (texture_color*ubo.light_color) * max(  dot(normal, ubo.light_direction),  ubo.ambient  );

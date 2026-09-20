@@ -19,17 +19,17 @@ TextureRenderSystem::TextureRenderSystem(
 
     this->register_descriptors();
 
-    this->textures = std::make_unique<TextureManager>(_device, *this->descriptor_manager, cmd_pool, std::string{"./assets/brick-texture.png"});
+    this->texture_manager = std::make_unique<TextureManager>(_device, _frame_count, cmd_pool, std::string{"./assets/"});
 
     this->pipeline = std::make_unique<Pipeline>(
-        _device, std::vector<VkDescriptorSetLayout>{this->descriptor_manager->generate_layout(), _point_light_system->get_descriptor_layout()},
+        _device, std::vector<VkDescriptorSetLayout>{this->descriptor_manager->generate_layout(), 
+         _point_light_system->get_descriptor_layout(), this->texture_manager->get_layout()},
         std::string{"./shaders/ssbo-3d-shader.vert.spv"}, std::string{"./shaders/texture-shader.frag.spv"},
         Vertex::get_attribute_descriptions(), Vertex::get_binding_descriptions(),
         extent, sizeof(PushConstantsData), image_format, depth_format
     );
 
     this->allocate_descriptors();
-    this->textures->allocate_descriptors(*this->descriptor_manager);
 
 
     this->ubo_data = {
@@ -38,6 +38,7 @@ TextureRenderSystem::TextureRenderSystem(
         .light_color = {.9f,.9f,.9f},
         .point_light_count = 0
     };
+    this->push_constant_data.texture_index = 1;
 }
 
 TextureRenderSystem::~TextureRenderSystem(){}
@@ -63,10 +64,10 @@ void TextureRenderSystem::populate(){
     this->objects = std::make_unique<ObjectManager>();
 
     std::vector<Vertex> vertices{
-        {{-5,2,-5}, {1,1,1}, {0,-1,0}, {0,0}},
-        {{5,2,-5},  {1,1,1}, {0,-1,0}, {1,0}},
-        {{-5,2,5},  {1,1,1}, {0,-1,0}, {0,1}},
-        {{5,2,5},   {1,1,1}, {0,-1,0}, {1,1}},
+        {{-5,2,-5}, {1,1,1}, {0,-1,0}, {0,1}},
+        {{5,2,-5},  {1,1,1}, {0,-1,0}, {1,1}},
+        {{-5,2,5},  {1,1,1}, {0,-1,0}, {0,0}},
+        {{5,2,5},   {1,1,1}, {0,-1,0}, {1,0}},
     };
     std::vector<u_int32_t> indices{0,1,2,2,1,3};
     Object o{vertices, indices, static_cast<u_int32_t>(vertices.size()), static_cast<u_int32_t>(indices.size())};
@@ -78,6 +79,11 @@ void TextureRenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, u
     vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline->get_pipeline());
 
     // Update Push Constants
+    this->b_c += 1;
+    if( this->b_c % 100 == 0)
+        this->push_constant_data.texture_index += 1;
+
+    this->push_constant_data.texture_index = this->push_constant_data.texture_index % this->texture_manager->get_texture_count();
     vkCmdPushConstants(
         cmd_buffer, this->pipeline->get_pipeline_layout(),
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 
@@ -87,6 +93,7 @@ void TextureRenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, u
     // Bind descriptors
     this->descriptor_manager->bind_descriptor_set(cmd_buffer, this->pipeline->get_pipeline_layout(), index);
     this->point_light_system->bind_set(cmd_buffer, this->pipeline->get_pipeline_layout(), index);
+    this->texture_manager->bind(cmd_buffer, this->pipeline->get_pipeline_layout(), index);
 
     VkDeviceSize offset{0};
     vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &this->vertex_buffers.at(index)->get_buffer(), &offset);

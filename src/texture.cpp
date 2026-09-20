@@ -1,31 +1,30 @@
-#include "textures.hpp"
-
-#include "buffer.hpp"
+#include "texture.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
 
-#include <iostream>
-#include <stdexcept>
-#include <chrono>
+#include "buffer.hpp"
 
+#include <chrono>
+#include <stdexcept>
+#include <string.h>
+#include <iostream>
 
 namespace velora{
 
-TextureManager::TextureManager(std::shared_ptr<Device> _device, Descriptors& descriptors, const VkCommandPool& cmd_pool, std::string filename) 
- : device{_device}{
+Texture::Texture(std::shared_ptr<Device> _device, const VkCommandPool& cmd_pool, std::string filename)
+ : device{_device} {
     this->load_texture(cmd_pool, filename);
-    this->register_descriptors(descriptors);
 }
 
-TextureManager::~TextureManager(){
+Texture::~Texture(){
     vkDestroyImageView(this->device->get_device(), this->image_view, VK_NULL_HANDLE);
-    vkDestroyImage(this->device->get_device(), this->texture, VK_NULL_HANDLE);
-    vkFreeMemory(this->device->get_device(), this->texture_ram, VK_NULL_HANDLE);
+    vkDestroyImage(this->device->get_device(), this->image, VK_NULL_HANDLE);
+    vkFreeMemory(this->device->get_device(), this->ram, VK_NULL_HANDLE);
     vkDestroySampler(this->device->get_device(), this->sampler, VK_NULL_HANDLE);
 }
 
-void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string filename){
+void Texture::load_texture(const VkCommandPool& cmd_pool, std::string filename){
     auto t0 = std::chrono::high_resolution_clock::now();
 
     int width, height, channels;
@@ -64,11 +63,11 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
     };
 
-    if( vkCreateImage(this->device->get_device(), &image_ci, VK_NULL_HANDLE, &this->texture) != VK_SUCCESS )
+    if( vkCreateImage(this->device->get_device(), &image_ci, VK_NULL_HANDLE, &this->image) != VK_SUCCESS )
         throw std::runtime_error("Failed to create Texture Image");
 
     VkMemoryRequirements image_requirements;
-    vkGetImageMemoryRequirements(this->device->get_device(), this->texture, &image_requirements);
+    vkGetImageMemoryRequirements(this->device->get_device(), this->image, &image_requirements);
 
     VkMemoryAllocateInfo image_alloc_ci{
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -76,16 +75,16 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
         .memoryTypeIndex = this->device->find_memory_type(image_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
     };
 
-    if( vkAllocateMemory(this->device->get_device(), &image_alloc_ci, VK_NULL_HANDLE, &this->texture_ram) != VK_SUCCESS )
+    if( vkAllocateMemory(this->device->get_device(), &image_alloc_ci, VK_NULL_HANDLE, &this->ram) != VK_SUCCESS )
         throw std::runtime_error("Failed to allocate RAM");
 
-    if( vkBindImageMemory(this->device->get_device(), this->texture, this->texture_ram, 0) != VK_SUCCESS)
+    if( vkBindImageMemory(this->device->get_device(), this->image, this->ram, 0) != VK_SUCCESS)
         throw std::runtime_error("Failed to bind image RAM");
 
 
     VkImageViewCreateInfo image_view_ci{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = this->texture,
+        .image = this->image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = image_ci.format,
         .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = image_ci.mipLevels, .layerCount = 1 }
@@ -121,7 +120,7 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
         .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        .image = this->texture,
+        .image = this->image,
         .subresourceRange = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 },
     };
     VkDependencyInfo barrier_dependency{
@@ -136,7 +135,7 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
         .imageSubresource{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .layerCount = 1},
         .imageExtent = image_ci.extent,
     };
-    vkCmdCopyBufferToImage(cmd_buffer, staging.get_buffer(), this->texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
+    vkCmdCopyBufferToImage(cmd_buffer, staging.get_buffer(), this->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
     VkImageMemoryBarrier2 read_barrier{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         .srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -145,7 +144,7 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         .newLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
-        .image = this->texture,
+        .image = this->image,
         .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1 }
     };
     barrier_dependency.pImageMemoryBarriers = &read_barrier;
@@ -194,36 +193,6 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
     if( vkCreateSampler(this->device->get_device(), &sampler_ci, VK_NULL_HANDLE, &this->sampler) )
         throw std::runtime_error("Failed to Create Sampler");
 }
-
-void TextureManager::allocate_descriptors(Descriptors& descriptors){
-    VkDescriptorImageInfo image_info{
-        .sampler = this->sampler,
-        .imageView = this->image_view,
-        .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
-    };
-    VkWriteDescriptorSet write{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = 4,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &image_info,
-    };
-
-    for(u_int32_t i = 0; i < descriptors.get_set_count(); ++i)
-        descriptors.allocate_descriptor(write, i);
-}
-
-void TextureManager::register_descriptors(Descriptors& descriptors){
-    descriptors.add_binding(
-        VkDescriptorSetLayoutBinding{
-            .binding = 4,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        }
-    );
-}
-
 
 
 }

@@ -2,7 +2,7 @@
 
 #include "sub-render-system.hpp"
 #include "point-light-system.hpp"
-#include "textures.hpp"
+#include "texture-manager.hpp"
 
 namespace velora{
 
@@ -16,6 +16,7 @@ class TextureRenderSystem : private SubRenderSystem {
     };
     struct PushConstantsData{
       glm::mat4 projection;
+      u_int32_t texture_index;
     };
   public:
     TextureRenderSystem(
@@ -46,10 +47,12 @@ class TextureRenderSystem : private SubRenderSystem {
 
     std::shared_ptr<PointLightSystem> point_light_system;
 
-    std::unique_ptr<TextureManager> textures;
+    std::unique_ptr<TextureManager> texture_manager;
 
     UBOData ubo_data{};
     PushConstantsData push_constant_data{};
+    
+    u_int32_t b_c = 0;
 };
 
 }

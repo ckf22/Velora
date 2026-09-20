@@ -78,8 +78,11 @@ void VertexRenderSystem::populate(){
         {{5,0,-5}, {.1f,.9f,.1f}, {0,-1,0}},
         {{5,0,5}, {.9f,.1f,.1f}, {0,-1,0}},
     };
+    std::vector<TransformComponent> transforms{
+        TransformComponent{{0,2.5,0}}
+    };
     std::vector<u_int32_t> indices{ 0,1,2, 2,1,3 };
-    Object buffer{vertices, indices, (u_int32_t)vertices.size(), (u_int32_t)indices.size()};
+    Object buffer{vertices, indices, transforms, (u_int32_t)vertices.size(), (u_int32_t)indices.size()};
     this->objects->add_object(std::move(buffer));
 };
 
