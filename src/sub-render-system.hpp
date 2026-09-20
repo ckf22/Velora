@@ -41,6 +41,16 @@ class SubRenderSystem{
     // Only run after Descriptor Sets have been created
     virtual void allocate_descriptors() = 0;
 
+    // Relies on the built in 'descriptor_manager' variable
+    virtual void register_descriptors() = 0;
+
+    // This function allocates descriptors on the built in 'descriptor_manager'
+    // Only run after Descriptor Sets have been created
+    void allocate_built_in_descriptors(u_int32_t ubo_binding, u_int32_t ssbo_binding);
+
+    // This function registers descriptors with the built in 'descriptor_manager'
+    void register_built_in_descriptors(u_int32_t ubo_binding, u_int32_t ssbo_binding);
+
     // Loads and adds objects, temp: until ECS
     virtual void populate() = 0;
 
@@ -51,12 +61,15 @@ class SubRenderSystem{
     virtual void upload_data(u_int32_t buffer_index) = 0;
 
     // Device local buffers need to be updated through a VkCommandBuffer
+    // So that all derived render systems have a function updating device local buffers to be executed before rendering has begun
     virtual void update_device_local_buffers(VkCommandBuffer& cmd_buffer, u_int32_t buffer_index) = 0;
+
+    // Only adds the copy commands to the VkCommandBuffer
+    void internal_update_device_local_buffers(VkCommandBuffer& cmd_buffer, u_int32_t buffer_index);
 
     // Binds descriptors and adds Draw Calls
     virtual void populate_command_buffer(VkCommandBuffer& cmd_buffer, u_int32_t index) = 0;
 
-    virtual void register_descriptors() = 0;
 
     virtual void create_buffer_objects(u_int32_t buffer_count, u_int32_t vertex_bytes, u_int32_t index_bytes, u_int32_t ssbo_bytes, u_int32_t ubo_bytes);
 

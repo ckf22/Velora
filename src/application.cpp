@@ -66,12 +66,12 @@ void Application::run(float fps){
         this->texture_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
 
         this->vertex_render_system->update_data(
-            std::chrono::high_resolution_clock::now()-t0,
+            std::chrono::high_resolution_clock::now()-t_u,
             this->swapchain.get_current_index(),
             frame_count < this->swapchain.get_image_count()
         );
         this->texture_render_system->update_data(
-            std::chrono::high_resolution_clock::now()-t0,
+            std::chrono::high_resolution_clock::now()-t_u,
             this->swapchain.get_current_index(),
             frame_count < this->swapchain.get_image_count()
         );

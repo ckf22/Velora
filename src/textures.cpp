@@ -48,7 +48,7 @@ void TextureManager::load_texture(const VkCommandPool& cmd_pool, std::string fil
     VkExtent3D extent{
         .width = static_cast<u_int32_t>(width),
         .height = static_cast<u_int32_t>(height),
-        .depth = 1 // number of textures
+        .depth = 1
     };
 
     VkImageCreateInfo image_ci{

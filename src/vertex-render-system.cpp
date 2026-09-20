@@ -31,7 +31,6 @@ VertexRenderSystem::VertexRenderSystem(
         image_format, depth_format
     );
 
-    this->descriptor_manager->generate_sets();
 
     // 1000: arbitrarily high number, placeholder until proper method replaces it
     this->create_buffer_objects(
@@ -109,91 +108,31 @@ void VertexRenderSystem::populate_command_buffer(VkCommandBuffer& cmd_buffer, u_
 
 void VertexRenderSystem::update_device_local_buffers(VkCommandBuffer& cmd_buffer, u_int32_t buffer_index){
     this->ubo_data.point_light_count = this->point_light_system->get_point_light_count();
+
     // UBO
     memcpy(this->ubo_staging.at(buffer_index)->map(), &this->ubo_data, sizeof(UBOData));
     this->ubo_staging.at(buffer_index)->unmap();
-
-    VkBufferCopy ubo_region{
-        .srcOffset = 0,
-        .dstOffset = 0,
-        .size = sizeof(UBOData),
-    };
-    vkCmdCopyBuffer(cmd_buffer, this->ubo_staging.at(buffer_index)->get_buffer(), this->ubo.at(buffer_index)->get_buffer(), 1, &ubo_region);
-
 
     // SSBO
     u_int32_t buffer = this->objects->upload_transforms(this->ssbo_staging.at(buffer_index)->map(), -1, true);
     this->ssbo_staging.at(buffer_index)->unmap();
 
-    VkBufferCopy ssbo_region{
-        .srcOffset = 0,
-        .dstOffset = 0,
-        .size = buffer,
-    };
-    vkCmdCopyBuffer(cmd_buffer, this->ssbo_staging.at(buffer_index)->get_buffer(), this->ssbo.at(buffer_index)->get_buffer(), 1, &ssbo_region);
+    this->internal_update_device_local_buffers(cmd_buffer, buffer_index);
 }
 
 void VertexRenderSystem::allocate_descriptors(){
-    VkDescriptorBufferInfo ubo_info{
-        .buffer = nullptr,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE
-    };
-    VkWriteDescriptorSet write_ubo{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = 1,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .pBufferInfo = &ubo_info,
-    };
+    this->descriptor_manager->generate_sets();
 
-    VkDescriptorBufferInfo ssbo_info{
-        .buffer = nullptr,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE
-    };
-    VkWriteDescriptorSet write_ssbo{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = 2,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        .pBufferInfo = &ssbo_info,
-    };
-
-
-    for(int i = 0; i < this->frame_count; ++i){
-        ubo_info.buffer = this->ubo.at(i)->get_buffer();
-        ssbo_info.buffer = this->ssbo.at(i)->get_buffer();
-
-        this->descriptor_manager->allocate_descriptor(write_ubo, i);
-        this->descriptor_manager->allocate_descriptor(write_ssbo, i);
-    }
+    // 1 and 2 correspond to the binding assigned to the UBO and World Transform SSBO within the shader
+    this->allocate_built_in_descriptors(1,2);
 }
 
 void VertexRenderSystem::register_descriptors(){
     // '0' is the set qualifier in the glsl shader(l. 9): layout(set = 0, binding = 3, std430)...
     this->descriptor_manager = std::make_unique<Descriptors>(this->device, this->frame_count, 0);
 
-    // UBO
-    this->descriptor_manager->add_binding(
-        VkDescriptorSetLayoutBinding{
-            .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-        }
-    );
-
-    // World Space Transforms
-    this->descriptor_manager->add_binding(
-        VkDescriptorSetLayoutBinding{
-            .binding = 2,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        }
-    );
-
+    // 1 and 2 correspond to the binding assigned to the UBO and World Transform SSBO within the shader
+    this->register_built_in_descriptors(1,2);
 }
 
 }
