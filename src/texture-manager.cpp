@@ -12,12 +12,15 @@ TextureManager::TextureManager(std::shared_ptr<Device> _device, const u_int32_t 
  : device{_device}, frame_count{_frame_count} {
     this->load_directory(filename, cmd_pool);
 
+    this->generare_sampler();
+
     this->generate_descriptor_ressources();
 }
 
 TextureManager::~TextureManager(){
     vkDestroyDescriptorSetLayout(this->device->get_device(), this->layout, nullptr);
     vkDestroyDescriptorPool(this->device->get_device(), this->pool, nullptr);
+    vkDestroySampler(this->device->get_device(), this->linear_sampler, nullptr);
 }
 
 
@@ -26,7 +29,9 @@ void TextureManager::bind(const VkCommandBuffer& cmd_buffer, const VkPipelineLay
 }
 
 void TextureManager::load_directory(std::string directory, const VkCommandPool& pool){
+
     std::filesystem::directory_iterator iterator{directory};
+
     for(const auto& it : iterator){
         if( it.exists() && !it.is_directory() )
             this->textures.push_back(
@@ -35,6 +40,31 @@ void TextureManager::load_directory(std::string directory, const VkCommandPool& 
     }
 }
 
+void TextureManager::generare_sampler(){
+
+    VkSamplerCreateInfo linear_sampler_ci{
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = VK_FILTER_LINEAR,
+        .minFilter = VK_FILTER_LINEAR,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .anisotropyEnable = VK_TRUE,
+        .maxAnisotropy = 8.f,
+        .compareEnable = VK_FALSE,
+        .compareOp = VK_COMPARE_OP_ALWAYS,
+        .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+        .unnormalizedCoordinates = VK_FALSE,
+    };
+    linear_sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    linear_sampler_ci.mipLodBias = 0.0f;
+    linear_sampler_ci.minLod = 0.0f;
+    linear_sampler_ci.maxLod = 0.0f;
+
+    if( vkCreateSampler(this->device->get_device(), &linear_sampler_ci, VK_NULL_HANDLE, &this->linear_sampler) )
+        throw std::runtime_error("Failed to Create Sampler");
+
+}
 
 void TextureManager::generate_descriptor_ressources(){
     u_int32_t tex_count = this->textures.size();
@@ -117,6 +147,7 @@ void TextureManager::generate_descriptor_ressources(){
 
     // Allocating descriptors
     VkDescriptorImageInfo image_info{
+        .sampler = this->linear_sampler,
         .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
     };
     VkWriteDescriptorSet write{
@@ -130,7 +161,6 @@ void TextureManager::generate_descriptor_ressources(){
 
     for(auto& it : this->textures){
         image_info.imageView = it->get_image_view();
-        image_info.sampler = it->get_sampler();
 
         for(int i = 0; i < this->frame_count; ++i){
             write.dstSet = this->sets[i];

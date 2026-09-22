@@ -22,9 +22,12 @@ class TextureManager{
   private:
     void load_directory(std::string directory, const VkCommandPool& pool);
     void generate_descriptor_ressources();
+    void generare_sampler();
 
     std::shared_ptr<Device> device;
     const u_int32_t frame_count;
+
+    VkSampler linear_sampler;
 
     // Because these descriptors require special setup
     VkDescriptorPool pool;

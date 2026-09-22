@@ -12,16 +12,15 @@
 
 namespace velora{
 
-Texture::Texture(std::shared_ptr<Device> _device, const VkCommandPool& cmd_pool, std::string filename)
- : device{_device} {
-    this->load_texture(cmd_pool, filename);
+Texture::Texture(std::shared_ptr<Device> _device, const VkCommandPool& cmd_pool, std::string _filename)
+ : device{_device}, filename{_filename}, id{0} {
+    this->load_texture(cmd_pool, _filename);
 }
 
 Texture::~Texture(){
     vkDestroyImageView(this->device->get_device(), this->image_view, VK_NULL_HANDLE);
     vkDestroyImage(this->device->get_device(), this->image, VK_NULL_HANDLE);
     vkFreeMemory(this->device->get_device(), this->ram, VK_NULL_HANDLE);
-    vkDestroySampler(this->device->get_device(), this->sampler, VK_NULL_HANDLE);
 }
 
 void Texture::load_texture(const VkCommandPool& cmd_pool, std::string filename){
@@ -169,29 +168,6 @@ void Texture::load_texture(const VkCommandPool& cmd_pool, std::string filename){
               << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t0).count()
               << "ms); " << static_cast<float>(staging.get_size())/1000000 << "MB RAM;" << std::endl;
 
-
-
-    VkSamplerCreateInfo sampler_ci{
-        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = VK_FILTER_LINEAR,
-        .minFilter = VK_FILTER_LINEAR,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .anisotropyEnable = VK_TRUE,
-        .maxAnisotropy = 8.f,
-        .compareEnable = VK_FALSE,
-        .compareOp = VK_COMPARE_OP_ALWAYS,
-        .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-        .unnormalizedCoordinates = VK_FALSE,
-    };
-    sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    sampler_ci.mipLodBias = 0.0f;
-    sampler_ci.minLod = 0.0f;
-    sampler_ci.maxLod = 0.0f;
-
-    if( vkCreateSampler(this->device->get_device(), &sampler_ci, VK_NULL_HANDLE, &this->sampler) )
-        throw std::runtime_error("Failed to Create Sampler");
 }
 
 

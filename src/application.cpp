@@ -6,14 +6,14 @@
 
 namespace velora {
 Application::Application(){
-    //this->point_light_system->get_point_lights() = std::vector<PointLight>({
-    //    PointLight{
-    //        .position = {0, -4, 0},
-    //        .intensity = 100,
-    //        .color = {.3f,.45f,.9f},
-    //        .range = 6
-    //    }
-    //});
+    this->point_light_system->get_point_lights() = std::vector<PointLight>({
+        PointLight{
+            .position = {0, -1, 0},
+            .intensity = 500,
+            .color = {.3f,.45f,.9f},
+            .range = 5
+        }
+    });
 
     this->vertex_render_system = std::make_unique<VertexRenderSystem>(
         this->device, this->swapchain.get_image_count(), this->swapchain.get_image_format(),
