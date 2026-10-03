@@ -6,6 +6,7 @@
 #include "command-pool.hpp"
 #include "vertex-render-system.hpp"
 #include "texture-render-system.hpp"
+#include "billboard-render-system.hpp"
 #include "point-light-system.hpp"
 
 #include <vector>
@@ -60,6 +61,8 @@ class Application{
     std::unique_ptr<VertexRenderSystem> vertex_render_system;
 
     std::unique_ptr<TextureRenderSystem> texture_render_system;
+
+    std::unique_ptr<BillboardRenderSystem> billboard_render_system;
 };
 
 }

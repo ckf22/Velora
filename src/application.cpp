@@ -26,6 +26,11 @@ Application::Application(){
         this->swapchain.get_current_extent(),  this->swapchain.get_image_count()
     );
 
+    this->billboard_render_system = std::make_unique<BillboardRenderSystem>(
+        this->device, this->swapchain.get_image_count(), this->swapchain.get_image_format(),
+        this->swapchain.get_depth_format(), this->swapchain.get_current_extent()
+    );
+
     this->create_command_buffers(this->device->get_queue_family());
     this->create_semaphores();
 
@@ -64,6 +69,8 @@ void Application::run(float fps){
 
         this->vertex_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
         this->texture_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
+        this->billboard_render_system->update_projection_matrix(this->camera.get_projection_view_matrix());
+        this->billboard_render_system->update_camera_vectors(this->camera.view);
 
         this->vertex_render_system->update_data(
             std::chrono::high_resolution_clock::now()-t_u,
@@ -71,6 +78,11 @@ void Application::run(float fps){
             frame_count < this->swapchain.get_image_count()
         );
         this->texture_render_system->update_data(
+            std::chrono::high_resolution_clock::now()-t_u,
+            this->swapchain.get_current_index(),
+            frame_count < this->swapchain.get_image_count()
+        );
+        this->billboard_render_system->update_data(
             std::chrono::high_resolution_clock::now()-t_u,
             this->swapchain.get_current_index(),
             frame_count < this->swapchain.get_image_count()
@@ -282,6 +294,7 @@ void Application::record_command_buffers(){
 
     this->vertex_render_system->populate_command_buffer(cmd_buffer, index);
     this->texture_render_system->populate_command_buffer(cmd_buffer, index);
+    this->billboard_render_system->populate_command_buffer(cmd_buffer, index);
 
     vkCmdEndRendering(cmd_buffer);
 
